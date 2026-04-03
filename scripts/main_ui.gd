@@ -3,9 +3,9 @@ extends Control
 ## Script principal de UI. Conecta el GameManager con la interfaz visual.
 
 @onready var gm: Node = $GameManager
-@onready var lbl_pts_jugador: Label = $VBox/TopBar/PuntajeJugador
-@onready var lbl_pts_ia: Label = $VBox/TopBar/PuntajeIA
-@onready var lbl_info: Label = $VBox/TopBar/InfoRonda
+@onready var lbl_pts_jugador: Label = $VBox/TopBar/TopBarContent/PuntajeJugador
+@onready var lbl_pts_ia: Label = $VBox/TopBar/TopBarContent/PuntajeIA
+@onready var lbl_info: Label = $VBox/TopBar/TopBarContent/InfoRonda
 @onready var contenedor_cartas_ia: HBoxContainer = $VBox/ZonaIA/CartasIA
 @onready var contenedor_cartas_jugador: HBoxContainer = $VBox/ZonaJugador/CartasJugador
 @onready var lbl_mesa_jugador: Label = $VBox/ZonaMesa/MesaCartas/CartaMesaJugador
@@ -78,8 +78,9 @@ func _on_cartas_repartidas(cartas_j: Array, cant_ia: int) -> void:
 	for i in range(cartas_j.size()):
 		var btn: Button = Button.new()
 		btn.text = cartas_j[i].nombre_legible()
-		btn.custom_minimum_size = Vector2(120, 60)
-		btn.add_theme_font_size_override("font_size", 16)
+		btn.custom_minimum_size = Vector2(130, 55)
+		btn.add_theme_font_size_override("font_size", 17)
+		btn.add_theme_color_override("font_color", Color(0.95, 0.95, 0.95))
 		var idx: int = i
 		btn.pressed.connect(func(): _on_carta_clickeada(idx))
 		contenedor_cartas_jugador.add_child(btn)
@@ -87,8 +88,12 @@ func _on_cartas_repartidas(cartas_j: Array, cant_ia: int) -> void:
 	# Cartas de IA (ocultas)
 	for i in range(cant_ia):
 		var lbl: Label = Label.new()
-		lbl.text = "[???]"
-		lbl.add_theme_font_size_override("font_size", 18)
+		lbl.text = "[ ? ]"
+		lbl.custom_minimum_size = Vector2(130, 55)
+		lbl.add_theme_font_size_override("font_size", 17)
+		lbl.add_theme_color_override("font_color", Color(1, 0.4, 0.4, 0.7))
+		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		contenedor_cartas_ia.add_child(lbl)
 
 	# Limpiar mesa
@@ -106,8 +111,9 @@ func _actualizar_cartas_jugador() -> void:
 	for i in range(gm.cartas_jugador.size()):
 		var btn: Button = Button.new()
 		btn.text = gm.cartas_jugador[i].nombre_legible()
-		btn.custom_minimum_size = Vector2(120, 60)
-		btn.add_theme_font_size_override("font_size", 16)
+		btn.custom_minimum_size = Vector2(130, 55)
+		btn.add_theme_font_size_override("font_size", 17)
+		btn.add_theme_color_override("font_color", Color(0.95, 0.95, 0.95))
 		var idx: int = i
 		btn.pressed.connect(func(): _on_carta_clickeada(idx))
 		contenedor_cartas_jugador.add_child(btn)
