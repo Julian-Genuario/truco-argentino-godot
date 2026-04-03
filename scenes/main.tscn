@@ -1,0 +1,204 @@
+[gd_scene load_steps=3 format=3 uid="uid://bkmain01"]
+
+[ext_resource type="Script" path="res://scripts/main_ui.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/game_manager.gd" id="2"]
+
+[node name="Main" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Fondo" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.05, 0.25, 0.1, 1)
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 10.0
+offset_right = -20.0
+offset_bottom = -10.0
+
+[node name="TopBar" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="PuntajeJugador" type="Label" parent="VBox/TopBar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "Vos: 0"
+
+[node name="Spacer" type="Control" parent="VBox/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="InfoRonda" type="Label" parent="VBox/TopBar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 18
+text = "Truco Argentino"
+horizontal_alignment = 1
+
+[node name="Spacer2" type="Control" parent="VBox/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PuntajeIA" type="Label" parent="VBox/TopBar"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 22
+text = "IA: 0"
+
+[node name="Sep1" type="HSeparator" parent="VBox"]
+layout_mode = 2
+
+[node name="ZonaIA" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.0
+alignment = 1
+
+[node name="LabelIA" type="Label" parent="VBox/ZonaIA"]
+layout_mode = 2
+text = "Cartas IA: "
+
+[node name="CartasIA" type="HBoxContainer" parent="VBox/ZonaIA"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Sep2" type="HSeparator" parent="VBox"]
+layout_mode = 2
+
+[node name="ZonaMesa" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 3.0
+alignment = 1
+
+[node name="LabelMesa" type="Label" parent="VBox/ZonaMesa"]
+layout_mode = 2
+horizontal_alignment = 1
+text = "Mesa"
+theme_override_font_sizes/font_size = 16
+
+[node name="MesaCartas" type="HBoxContainer" parent="VBox/ZonaMesa"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 80
+
+[node name="CartaMesaJugador" type="Label" parent="VBox/ZonaMesa/MesaCartas"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "---"
+
+[node name="VS" type="Label" parent="VBox/ZonaMesa/MesaCartas"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "vs"
+
+[node name="CartaMesaIA" type="Label" parent="VBox/ZonaMesa/MesaCartas"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "---"
+
+[node name="ResultadoMano" type="Label" parent="VBox/ZonaMesa"]
+layout_mode = 2
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(1, 1, 0.5, 1)
+text = ""
+
+[node name="ManoScore" type="Label" parent="VBox/ZonaMesa"]
+layout_mode = 2
+horizontal_alignment = 1
+theme_override_font_sizes/font_size = 14
+text = "Manos: Vos 0 - IA 0"
+
+[node name="Sep3" type="HSeparator" parent="VBox"]
+layout_mode = 2
+
+[node name="ZonaJugador" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 2.0
+alignment = 1
+
+[node name="LabelJugador" type="Label" parent="VBox/ZonaJugador"]
+layout_mode = 2
+text = "Tus cartas: "
+
+[node name="CartasJugador" type="HBoxContainer" parent="VBox/ZonaJugador"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Sep4" type="HSeparator" parent="VBox"]
+layout_mode = 2
+
+[node name="Acciones" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 1
+theme_override_constants/separation = 10
+
+[node name="BtnEnvido" type="Button" parent="VBox/Acciones"]
+layout_mode = 2
+text = "Envido"
+
+[node name="BtnRealEnvido" type="Button" parent="VBox/Acciones"]
+layout_mode = 2
+text = "Real Envido"
+
+[node name="BtnTruco" type="Button" parent="VBox/Acciones"]
+layout_mode = 2
+text = "Truco"
+
+[node name="BtnRetruco" type="Button" parent="VBox/Acciones"]
+layout_mode = 2
+text = "Retruco"
+
+[node name="BtnVale4" type="Button" parent="VBox/Acciones"]
+layout_mode = 2
+text = "Vale 4"
+
+[node name="BtnQuiero" type="Button" parent="VBox/Acciones"]
+layout_mode = 2
+text = "Quiero"
+
+[node name="BtnNoQuiero" type="Button" parent="VBox/Acciones"]
+layout_mode = 2
+text = "No Quiero"
+
+[node name="BtnRetirarse" type="Button" parent="VBox/Acciones"]
+layout_mode = 2
+text = "Me voy"
+
+[node name="BtnSiguiente" type="Button" parent="VBox/Acciones"]
+layout_mode = 2
+text = "Siguiente Ronda"
+
+[node name="Log" type="RichTextLabel" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+size_flags_stretch_ratio = 1.5
+bbcode_enabled = true
+text = "Bienvenido al Truco Argentino!"
+scroll_following = true
+
+[node name="ComodinesPanel" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="LabelComodines" type="Label" parent="VBox/ComodinesPanel"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "Comodines: Ninguno"
+
+[node name="GameManager" type="Node" parent="."]
+script = ExtResource("2")
