@@ -154,7 +154,7 @@ func _on_ronda_terminada(ganador: String) -> void:
 	lbl_resultado.text = txt
 
 	# Comodin: Violento
-	if gm.truco_cantado:
+	if gm.truco_fue_cantado:
 		var bonus: int = comodines_mgr.aplicar_violento(ganador == "jugador")
 		if bonus > 0:
 			if ganador == "jugador":

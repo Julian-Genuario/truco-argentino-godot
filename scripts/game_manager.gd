@@ -53,7 +53,7 @@ var carta_jugada_ia: Carta = null
 
 # Estado del truco
 var nivel_truco: String = "nada"  # nada, truco, retruco, vale4
-var truco_cantado: bool = false
+var truco_fue_cantado: bool = false
 var quien_canto_truco: String = ""  # "jugador" o "ia"
 var esperando_respuesta_truco: bool = false
 
@@ -93,7 +93,7 @@ func iniciar_ronda() -> void:
 	manos_ia = 0
 	mano_actual = 0
 	nivel_truco = "nada"
-	truco_cantado = false
+	truco_fue_cantado = false
 	quien_canto_truco = ""
 	esperando_respuesta_truco = false
 	envido_cantado = false
@@ -216,7 +216,7 @@ func jugador_cantar_truco(nivel: String) -> void:
 	nivel_truco = nivel
 	quien_canto_truco = "jugador"
 	esperando_respuesta_truco = true
-	truco_cantado = true
+	truco_fue_cantado = true
 	emit_signal("truco_cantado", "jugador", nivel)
 	emit_signal("mensaje", "¡Cantaste " + nivel + "!")
 
@@ -382,7 +382,7 @@ func _turno_ia() -> void:
 			nivel_truco = decision_truco
 			quien_canto_truco = "ia"
 			esperando_respuesta_truco = true
-			truco_cantado = true
+			truco_fue_cantado = true
 			emit_signal("truco_cantado", "ia", decision_truco)
 			emit_signal("mensaje", "La IA canta " + decision_truco + "!")
 			turno_jugador = true
