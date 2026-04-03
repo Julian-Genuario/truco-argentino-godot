@@ -38,11 +38,6 @@ const DEFINICIONES: Dictionary = {
 		"descripcion": "Envido suma +2",
 		"categoria": "apuestas",
 	},
-	Tipo.MANO_PESADA: {
-		"nombre": "El Mano Pesada",
-		"descripcion": "Ganar primera mano = +1 punto",
-		"categoria": "cartas",
-	},
 	Tipo.VIOLENTO: {
 		"nombre": "El Violento",
 		"descripcion": "Truco ganado = +1 punto extra",
