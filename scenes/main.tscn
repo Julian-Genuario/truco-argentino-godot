@@ -25,17 +25,16 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 24.0
-offset_top = 12.0
+offset_top = 10.0
 offset_right = -24.0
-offset_bottom = -12.0
-theme_override_constants/separation = 6
+offset_bottom = -10.0
+theme_override_constants/separation = 4
 
 [node name="TopBar" type="PanelContainer" parent="VBox"]
 layout_mode = 2
 
 [node name="TopBarContent" type="HBoxContainer" parent="VBox/TopBar"]
 layout_mode = 2
-theme_override_constants/separation = 0
 
 [node name="PuntajeJugador" type="Label" parent="VBox/TopBar/TopBarContent"]
 layout_mode = 2
@@ -68,8 +67,8 @@ alignment = 1
 
 [node name="LabelIA" type="Label" parent="VBox/ZonaIA"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 14
-theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
 text = "CARTAS DE LA IA"
 horizontal_alignment = 1
 
@@ -78,52 +77,103 @@ layout_mode = 2
 alignment = 1
 theme_override_constants/separation = 12
 
-[node name="SepMesa" type="HSeparator" parent="VBox"]
-layout_mode = 2
-theme_override_styles/separator = null
-
 [node name="ZonaMesa" type="VBoxContainer" parent="VBox"]
 layout_mode = 2
 size_flags_vertical = 3
-size_flags_stretch_ratio = 3.0
+size_flags_stretch_ratio = 3.5
 alignment = 1
 
 [node name="LabelMesa" type="Label" parent="VBox/ZonaMesa"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 14
+theme_override_font_sizes/font_size = 13
 theme_override_colors/font_color = Color(0.6, 0.8, 0.6, 1)
 text = "MESA"
 horizontal_alignment = 1
 
-[node name="MesaCartas" type="HBoxContainer" parent="VBox/ZonaMesa"]
+[node name="MesaManos" type="HBoxContainer" parent="VBox/ZonaMesa"]
+layout_mode = 2
+size_flags_vertical = 3
+alignment = 1
+theme_override_constants/separation = 30
+
+[node name="Mano1" type="VBoxContainer" parent="VBox/ZonaMesa/MesaManos"]
 layout_mode = 2
 alignment = 1
-theme_override_constants/separation = 40
+theme_override_constants/separation = 4
 
-[node name="CartaMesaJugador" type="Label" parent="VBox/ZonaMesa/MesaCartas"]
+[node name="LblMano1" type="Label" parent="VBox/ZonaMesa/MesaManos/Mano1"]
 layout_mode = 2
-custom_minimum_size = Vector2(140, 50)
-theme_override_font_sizes/font_size = 22
-theme_override_colors/font_color = Color(0.3, 1, 0.4, 1)
-text = "---"
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+text = "Mano 1"
 horizontal_alignment = 1
-vertical_alignment = 1
 
-[node name="VS" type="Label" parent="VBox/ZonaMesa/MesaCartas"]
+[node name="CartasM1" type="HBoxContainer" parent="VBox/ZonaMesa/MesaManos/Mano1"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 18
-theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
-text = "vs"
-vertical_alignment = 1
+alignment = 1
+theme_override_constants/separation = 8
 
-[node name="CartaMesaIA" type="Label" parent="VBox/ZonaMesa/MesaCartas"]
+[node name="ResultM1" type="Label" parent="VBox/ZonaMesa/MesaManos/Mano1"]
 layout_mode = 2
-custom_minimum_size = Vector2(140, 50)
-theme_override_font_sizes/font_size = 22
-theme_override_colors/font_color = Color(1, 0.4, 0.4, 1)
-text = "---"
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(1, 1, 0.5, 1)
+text = ""
 horizontal_alignment = 1
-vertical_alignment = 1
+
+[node name="Mano2" type="VBoxContainer" parent="VBox/ZonaMesa/MesaManos"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 4
+
+[node name="LblMano2" type="Label" parent="VBox/ZonaMesa/MesaManos/Mano2"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+text = "Mano 2"
+horizontal_alignment = 1
+
+[node name="CartasM2" type="HBoxContainer" parent="VBox/ZonaMesa/MesaManos/Mano2"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="ResultM2" type="Label" parent="VBox/ZonaMesa/MesaManos/Mano2"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(1, 1, 0.5, 1)
+text = ""
+horizontal_alignment = 1
+
+[node name="Mano3" type="VBoxContainer" parent="VBox/ZonaMesa/MesaManos"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 4
+
+[node name="LblMano3" type="Label" parent="VBox/ZonaMesa/MesaManos/Mano3"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.5, 0.5, 0.5, 1)
+text = "Mano 3"
+horizontal_alignment = 1
+
+[node name="CartasM3" type="HBoxContainer" parent="VBox/ZonaMesa/MesaManos/Mano3"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="ResultM3" type="Label" parent="VBox/ZonaMesa/MesaManos/Mano3"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+theme_override_colors/font_color = Color(1, 1, 0.5, 1)
+text = ""
+horizontal_alignment = 1
+
+[node name="ManoScore" type="Label" parent="VBox/ZonaMesa"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.85, 0.85, 0.85, 1)
+text = "Manos: Vos 0 - IA 0"
+horizontal_alignment = 1
 
 [node name="ResultadoMano" type="Label" parent="VBox/ZonaMesa"]
 layout_mode = 2
@@ -132,26 +182,16 @@ theme_override_colors/font_color = Color(1, 1, 0.5, 1)
 text = ""
 horizontal_alignment = 1
 
-[node name="ManoScore" type="Label" parent="VBox/ZonaMesa"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 16
-theme_override_colors/font_color = Color(0.8, 0.8, 0.8, 1)
-text = "Manos: Vos 0 - IA 0"
-horizontal_alignment = 1
-
-[node name="SepJugador" type="HSeparator" parent="VBox"]
-layout_mode = 2
-
 [node name="ZonaJugador" type="VBoxContainer" parent="VBox"]
 layout_mode = 2
 size_flags_vertical = 3
-size_flags_stretch_ratio = 1.5
+size_flags_stretch_ratio = 1.8
 alignment = 1
 
 [node name="LabelJugador" type="Label" parent="VBox/ZonaJugador"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 14
-theme_override_colors/font_color = Color(0.7, 0.7, 0.7, 1)
+theme_override_font_sizes/font_size = 13
+theme_override_colors/font_color = Color(0.6, 0.6, 0.6, 1)
 text = "TUS CARTAS"
 horizontal_alignment = 1
 
@@ -160,75 +200,72 @@ layout_mode = 2
 alignment = 1
 theme_override_constants/separation = 12
 
-[node name="SepAcciones" type="HSeparator" parent="VBox"]
-layout_mode = 2
-
 [node name="Acciones" type="HBoxContainer" parent="VBox"]
 layout_mode = 2
 size_flags_vertical = 3
-size_flags_stretch_ratio = 0.8
+size_flags_stretch_ratio = 0.5
 alignment = 1
 theme_override_constants/separation = 8
 
 [node name="BtnEnvido" type="Button" parent="VBox/Acciones"]
 layout_mode = 2
-custom_minimum_size = Vector2(100, 40)
-theme_override_font_sizes/font_size = 15
+custom_minimum_size = Vector2(100, 38)
+theme_override_font_sizes/font_size = 14
 text = "Envido"
 
 [node name="BtnRealEnvido" type="Button" parent="VBox/Acciones"]
 layout_mode = 2
-custom_minimum_size = Vector2(100, 40)
-theme_override_font_sizes/font_size = 15
+custom_minimum_size = Vector2(100, 38)
+theme_override_font_sizes/font_size = 14
 text = "Real Envido"
 
 [node name="BtnTruco" type="Button" parent="VBox/Acciones"]
 layout_mode = 2
-custom_minimum_size = Vector2(100, 40)
-theme_override_font_sizes/font_size = 15
+custom_minimum_size = Vector2(100, 38)
+theme_override_font_sizes/font_size = 14
 text = "Truco"
 
 [node name="BtnRetruco" type="Button" parent="VBox/Acciones"]
 layout_mode = 2
-custom_minimum_size = Vector2(100, 40)
-theme_override_font_sizes/font_size = 15
+custom_minimum_size = Vector2(100, 38)
+theme_override_font_sizes/font_size = 14
 text = "Retruco"
 
 [node name="BtnVale4" type="Button" parent="VBox/Acciones"]
 layout_mode = 2
-custom_minimum_size = Vector2(100, 40)
-theme_override_font_sizes/font_size = 15
+custom_minimum_size = Vector2(100, 38)
+theme_override_font_sizes/font_size = 14
 text = "Vale 4"
 
 [node name="BtnQuiero" type="Button" parent="VBox/Acciones"]
 layout_mode = 2
-custom_minimum_size = Vector2(100, 40)
-theme_override_font_sizes/font_size = 15
+custom_minimum_size = Vector2(100, 38)
+theme_override_font_sizes/font_size = 14
 text = "Quiero"
 
 [node name="BtnNoQuiero" type="Button" parent="VBox/Acciones"]
 layout_mode = 2
-custom_minimum_size = Vector2(100, 40)
-theme_override_font_sizes/font_size = 15
+custom_minimum_size = Vector2(100, 38)
+theme_override_font_sizes/font_size = 14
 text = "No Quiero"
 
 [node name="BtnRetirarse" type="Button" parent="VBox/Acciones"]
 layout_mode = 2
-custom_minimum_size = Vector2(100, 40)
-theme_override_font_sizes/font_size = 15
+custom_minimum_size = Vector2(100, 38)
+theme_override_font_sizes/font_size = 14
 text = "Me voy"
 
 [node name="BtnSiguiente" type="Button" parent="VBox/Acciones"]
 layout_mode = 2
-custom_minimum_size = Vector2(140, 40)
-theme_override_font_sizes/font_size = 15
+custom_minimum_size = Vector2(130, 38)
+theme_override_font_sizes/font_size = 14
 text = "Siguiente Ronda"
 
 [node name="Log" type="RichTextLabel" parent="VBox"]
 layout_mode = 2
 size_flags_vertical = 3
-size_flags_stretch_ratio = 1.2
-theme_override_font_sizes/normal_font_size = 14
+size_flags_stretch_ratio = 1.0
+theme_override_font_sizes/normal_font_size = 13
 theme_override_colors/default_color = Color(0.85, 0.85, 0.85, 1)
 bbcode_enabled = true
 text = "Bienvenido al Truco Argentino!"
@@ -239,7 +276,7 @@ layout_mode = 2
 
 [node name="LabelComodines" type="Label" parent="VBox/ComodinesPanel"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 13
+theme_override_font_sizes/font_size = 12
 theme_override_colors/font_color = Color(0.8, 0.5, 1, 1)
 text = "Comodines: Ninguno"
 horizontal_alignment = 1

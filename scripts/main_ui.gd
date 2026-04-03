@@ -8,12 +8,18 @@ extends Control
 @onready var lbl_info: Label = $VBox/TopBar/TopBarContent/InfoRonda
 @onready var contenedor_cartas_ia: HBoxContainer = $VBox/ZonaIA/CartasIA
 @onready var contenedor_cartas_jugador: HBoxContainer = $VBox/ZonaJugador/CartasJugador
-@onready var lbl_mesa_jugador: Label = $VBox/ZonaMesa/MesaCartas/CartaMesaJugador
-@onready var lbl_mesa_ia: Label = $VBox/ZonaMesa/MesaCartas/CartaMesaIA
 @onready var lbl_resultado: Label = $VBox/ZonaMesa/ResultadoMano
 @onready var lbl_mano_score: Label = $VBox/ZonaMesa/ManoScore
 @onready var log_text: RichTextLabel = $VBox/Log
 @onready var lbl_comodines: Label = $VBox/ComodinesPanel/LabelComodines
+
+# Contenedores de las 3 manos en la mesa
+@onready var cartas_m1: HBoxContainer = $VBox/ZonaMesa/MesaManos/Mano1/CartasM1
+@onready var cartas_m2: HBoxContainer = $VBox/ZonaMesa/MesaManos/Mano2/CartasM2
+@onready var cartas_m3: HBoxContainer = $VBox/ZonaMesa/MesaManos/Mano3/CartasM3
+@onready var result_m1: Label = $VBox/ZonaMesa/MesaManos/Mano1/ResultM1
+@onready var result_m2: Label = $VBox/ZonaMesa/MesaManos/Mano2/ResultM2
+@onready var result_m3: Label = $VBox/ZonaMesa/MesaManos/Mano3/ResultM3
 
 # Botones
 @onready var btn_envido: Button = $VBox/Acciones/BtnEnvido
@@ -28,12 +34,19 @@ extends Control
 
 var comodines_mgr: ComodinesManager
 
+# Referencia a los contenedores de mano por indice
+var _contenedores_mano: Array = []
+var _resultados_mano: Array = []
+
 func _ready() -> void:
 	# Crear sistema de comodines
 	comodines_mgr = ComodinesManager.new()
 	add_child(comodines_mgr)
 	comodines_mgr.asignar_comodines_aleatorios(3)
 	comodines_mgr.comodin_activado.connect(_on_comodin_activado)
+
+	_contenedores_mano = [cartas_m1, cartas_m2, cartas_m3]
+	_resultados_mano = [result_m1, result_m2, result_m3]
 
 	# Conectar señales del GameManager
 	gm.ronda_iniciada.connect(_on_ronda_iniciada)
@@ -74,52 +87,63 @@ func _on_cartas_repartidas(cartas_j: Array, cant_ia: int) -> void:
 	_limpiar_contenedor(contenedor_cartas_jugador)
 	_limpiar_contenedor(contenedor_cartas_ia)
 
-	# Cartas del jugador (visibles, clickeables)
+	# Cartas del jugador como sprites visuales
 	for i in range(cartas_j.size()):
-		var btn: Button = Button.new()
-		btn.text = cartas_j[i].nombre_legible()
-		btn.custom_minimum_size = Vector2(130, 55)
-		btn.add_theme_font_size_override("font_size", 17)
-		btn.add_theme_color_override("font_color", Color(0.95, 0.95, 0.95))
-		var idx: int = i
-		btn.pressed.connect(func(): _on_carta_clickeada(idx))
-		contenedor_cartas_jugador.add_child(btn)
+		var cv: CartaVisual = CartaVisual.crear_carta_jugador(cartas_j[i], i)
+		cv.carta_clickeada.connect(_on_carta_clickeada)
+		contenedor_cartas_jugador.add_child(cv)
 
 	# Cartas de IA (ocultas)
 	for i in range(cant_ia):
-		var lbl: Label = Label.new()
-		lbl.text = "[ ? ]"
-		lbl.custom_minimum_size = Vector2(130, 55)
-		lbl.add_theme_font_size_override("font_size", 17)
-		lbl.add_theme_color_override("font_color", Color(1, 0.4, 0.4, 0.7))
-		lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		contenedor_cartas_ia.add_child(lbl)
+		var oculta: CartaVisual = CartaVisual.crear_carta_oculta()
+		contenedor_cartas_ia.add_child(oculta)
 
-	# Limpiar mesa
-	lbl_mesa_jugador.text = "---"
-	lbl_mesa_ia.text = "---"
+	# Limpiar mesa - poner slots vacios en las 3 manos
+	_limpiar_mesa()
 	lbl_resultado.text = ""
 	lbl_mano_score.text = "Manos: Vos 0 - IA 0"
 
+func _limpiar_mesa() -> void:
+	for i in range(3):
+		_limpiar_contenedor(_contenedores_mano[i])
+		_contenedores_mano[i].add_child(CartaVisual.crear_slot_vacio())
+		_contenedores_mano[i].add_child(CartaVisual.crear_slot_vacio())
+		_resultados_mano[i].text = ""
+
 func _on_carta_clickeada(indice: int) -> void:
+	# Mostrar carta del jugador en la mesa antes de enviarla al GM
+	var mano_idx: int = gm.mano_actual
+	if mano_idx < 3 and indice < gm.cartas_jugador.size():
+		var carta: Carta = gm.cartas_jugador[indice]
+		_colocar_carta_mesa(mano_idx, carta, true)
+
 	gm.jugador_jugar_carta(indice)
 	_actualizar_cartas_jugador()
+
+func _colocar_carta_mesa(mano_idx: int, carta: Carta, es_jugador: bool) -> void:
+	if mano_idx >= 3:
+		return
+	var cont: HBoxContainer = _contenedores_mano[mano_idx]
+	# Slot 0 = jugador, Slot 1 = IA
+	var slot_idx: int = 0 if es_jugador else 1
+	if slot_idx < cont.get_child_count():
+		var viejo: Node = cont.get_child(slot_idx)
+		viejo.queue_free()
+		await get_tree().process_frame
+	var carta_visual: CartaVisual = CartaVisual.crear_carta_mesa(carta, es_jugador)
+	cont.add_child(carta_visual)
+	cont.move_child(carta_visual, slot_idx)
 
 func _actualizar_cartas_jugador() -> void:
 	_limpiar_contenedor(contenedor_cartas_jugador)
 	for i in range(gm.cartas_jugador.size()):
-		var btn: Button = Button.new()
-		btn.text = gm.cartas_jugador[i].nombre_legible()
-		btn.custom_minimum_size = Vector2(130, 55)
-		btn.add_theme_font_size_override("font_size", 17)
-		btn.add_theme_color_override("font_color", Color(0.95, 0.95, 0.95))
-		var idx: int = i
-		btn.pressed.connect(func(): _on_carta_clickeada(idx))
-		contenedor_cartas_jugador.add_child(btn)
+		var cv: CartaVisual = CartaVisual.crear_carta_jugador(gm.cartas_jugador[i], i)
+		cv.carta_clickeada.connect(_on_carta_clickeada)
+		contenedor_cartas_jugador.add_child(cv)
 
 func _on_carta_ia_jugada(carta: Carta) -> void:
-	lbl_mesa_ia.text = carta.nombre_legible()
+	# Colocar carta de IA en la mesa
+	_colocar_carta_mesa(gm.mano_actual, carta, false)
 	# Remover una carta oculta de la IA
 	if contenedor_cartas_ia.get_child_count() > 0:
 		contenedor_cartas_ia.get_child(0).queue_free()
@@ -136,16 +160,26 @@ func _on_ronda_iniciada() -> void:
 	lbl_info.text = mano_txt
 
 func _on_mano_jugada(ganador: String, carta_j: Carta, carta_ia: Carta) -> void:
-	lbl_mesa_jugador.text = carta_j.nombre_legible()
-	lbl_mesa_ia.text = carta_ia.nombre_legible()
+	var mano_idx: int = gm.mano_actual - 1  # mano_actual ya incremento
+	if mano_idx < 0:
+		mano_idx = 0
 
-	var txt_ganador: String = "Ganaste!" if ganador == "jugador" else "Gano la IA"
+	var txt_ganador: String = "Ganaste" if ganador == "jugador" else "IA gano"
 	lbl_resultado.text = txt_ganador
 	lbl_mano_score.text = "Manos: Vos " + str(gm.manos_jugador) + " - IA " + str(gm.manos_ia)
 	_log(carta_j.nombre_legible() + " vs " + carta_ia.nombre_legible() + " -> " + txt_ganador)
 
+	# Mostrar resultado en el slot de la mano
+	if mano_idx < 3:
+		if ganador == "jugador":
+			_resultados_mano[mano_idx].text = "Ganaste"
+			_resultados_mano[mano_idx].add_theme_color_override("font_color", Color(0.3, 1, 0.4))
+		else:
+			_resultados_mano[mano_idx].text = "IA gano"
+			_resultados_mano[mano_idx].add_theme_color_override("font_color", Color(1, 0.4, 0.4))
+
 	# Comodin: Mano Pesada
-	if gm.mano_actual == 1:  # Acaba de terminar mano 0 (mano_actual ya incrementó)
+	if gm.mano_actual == 1:
 		var bonus: int = comodines_mgr.aplicar_mano_pesada(ganador == "jugador")
 		if bonus > 0:
 			if ganador == "jugador":
@@ -197,8 +231,9 @@ func _on_esperando_accion(acciones: Array) -> void:
 	# Habilitar click en cartas solo si puede jugar
 	var puede_jugar: bool = "jugar_carta" in acciones
 	for child in contenedor_cartas_jugador.get_children():
-		if child is Button:
-			child.disabled = not puede_jugar
+		if child is CartaVisual:
+			child.mouse_filter = Control.MOUSE_FILTER_STOP if puede_jugar else Control.MOUSE_FILTER_IGNORE
+			child.modulate.a = 1.0 if puede_jugar else 0.5
 
 func _on_mensaje(texto: String) -> void:
 	_log(texto)
