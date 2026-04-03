@@ -1,6 +1,7 @@
 extends Node
 
-## Máquina de estados principal del juego de Truco.
+## Maquina de estados del juego de Truco Argentino.
+## Arreglados bugs de estado, turno post-envido, y clicks ignorados.
 
 signal ronda_iniciada
 signal mano_jugada(ganador: String, carta_j: Carta, carta_ia: Carta)
@@ -17,12 +18,10 @@ signal respuesta_truco(quien: String, respuesta: String)
 
 enum Estado {
 	INICIO_RONDA,
-	ESPERANDO_ENVIDO,
-	ESPERANDO_JUGADOR,
-	ESPERANDO_IA,
-	RESOLVIENDO_MANO,
-	RESOLVIENDO_TRUCO,
-	RESOLVIENDO_ENVIDO,
+	TURNO_JUGADOR,
+	TURNO_IA,
+	ESPERANDO_RESPUESTA_JUGADOR,  # jugador debe responder envido/truco
+	RESOLVIENDO,
 	FIN_RONDA,
 	FIN_JUEGO,
 }
@@ -41,40 +40,44 @@ var manos_jugador: int = 0
 var manos_ia: int = 0
 var mano_actual: int = 0  # 0, 1, 2
 
-# Quién es mano (empieza la ronda)
+# Quien es mano (empieza)
 var es_mano_jugador: bool = true
-
-# Quién empieza la mano actual
+# Quien juega en este momento
 var turno_jugador: bool = true
+# Quien jugó primera carta en la mano (para volver despues de envido)
+var _turno_original: bool = true
 
 # Cartas jugadas en la mano actual
 var carta_jugada_jugador: Carta = null
 var carta_jugada_ia: Carta = null
 
-# Estado del truco
-var nivel_truco: String = "nada"  # nada, truco, retruco, vale4
+# Truco
+var nivel_truco: String = "nada"
 var truco_fue_cantado: bool = false
-var quien_canto_truco: String = ""  # "jugador" o "ia"
+var quien_canto_truco: String = ""
 var esperando_respuesta_truco: bool = false
 
-# Estado del envido
+# Envido
 var envido_cantado: bool = false
-var envido_nivel: String = ""  # envido, real_envido
+var envido_nivel: String = ""
 var esperando_respuesta_envido: bool = false
 var envido_resuelto: bool = false
 var quien_canto_envido: String = ""
 
-# Truco pendiente mientras se resuelve envido (envido tiene prioridad)
+# Truco pendiente (envido tiene prioridad)
 var truco_pendiente: bool = false
 var truco_pendiente_nivel: String = ""
 var truco_pendiente_quien: String = ""
 
-# Comodines activos
+# Comodines
 var comodines_jugador: Array = []
 var comodines_ia: Array = []
 
-# Referencia al cerebro IA
 var ia_brain: AIBrain
+
+# Historial para calcular envido con mano original
+var _historial_jugador: Array[Carta] = []
+var _historial_ia: Array[Carta] = []
 
 func _ready() -> void:
 	mazo = Mazo.new()
@@ -111,30 +114,43 @@ func iniciar_ronda() -> void:
 	truco_pendiente_quien = ""
 	carta_jugada_jugador = null
 	carta_jugada_ia = null
+	_historial_jugador.clear()
+	_historial_ia.clear()
 
-	# Barajar y repartir
 	mazo.reiniciar()
 	mazo.barajar()
 	cartas_jugador = mazo.repartir(3)
 	cartas_ia = mazo.repartir(3)
 
 	turno_jugador = es_mano_jugador
+	_turno_original = es_mano_jugador
 
 	emit_signal("ronda_iniciada")
 	emit_signal("cartas_repartidas", cartas_jugador, cartas_ia.size())
 
-	# Fase de envido (solo antes de primera mano)
-	estado = Estado.ESPERANDO_ENVIDO
-	_preparar_turno()
+	_siguiente_turno()
 
-func _preparar_turno() -> void:
+# ============================================================
+# CONTROL DE TURNOS
+# ============================================================
+
+func _siguiente_turno() -> void:
+	# Si la ronda o juego terminó, no hacer nada
+	if estado == Estado.FIN_RONDA or estado == Estado.FIN_JUEGO:
+		return
+
 	if turno_jugador:
+		estado = Estado.TURNO_JUGADOR
 		var acciones: Array = _obtener_acciones_jugador()
-		estado = Estado.ESPERANDO_JUGADOR if not esperando_respuesta_truco and not esperando_respuesta_envido else estado
 		emit_signal("esperando_accion_jugador", acciones)
 	else:
-		estado = Estado.ESPERANDO_IA
+		estado = Estado.TURNO_IA
 		_turno_ia()
+
+func _pedir_respuesta_jugador() -> void:
+	estado = Estado.ESPERANDO_RESPUESTA_JUGADOR
+	var acciones: Array = _obtener_acciones_jugador()
+	emit_signal("esperando_accion_jugador", acciones)
 
 # ============================================================
 # ACCIONES DISPONIBLES
@@ -143,19 +159,22 @@ func _preparar_turno() -> void:
 func _obtener_acciones_jugador() -> Array:
 	var acciones: Array = []
 
-	# Puede jugar carta si no está esperando respuestas
-	if not esperando_respuesta_truco and not esperando_respuesta_envido:
+	var hay_respuesta_pendiente: bool = esperando_respuesta_truco or esperando_respuesta_envido
+
+	# Puede jugar carta si no hay respuesta pendiente
+	if not hay_respuesta_pendiente:
 		acciones.append("jugar_carta")
 
-	# Envido: en la primera mano, solo si el jugador NO tiró su carta todavía.
-	# El rival puede cantar envido si todavía no jugó su carta (aunque el mano ya tiró).
-	var puede_envido: bool = mano_actual == 0 and not envido_resuelto and not envido_cantado and carta_jugada_jugador == null
+	# Envido: primera mano, no resuelto, no cantado, jugador no tiró carta aún
+	var puede_envido: bool = (mano_actual == 0 and not envido_resuelto
+		and not envido_cantado and carta_jugada_jugador == null)
+
 	if puede_envido and not esperando_respuesta_envido:
 		acciones.append("envido")
 		acciones.append("real_envido")
 
-	# Truco: si no se llegó al máximo y no hay envido pendiente
-	if not esperando_respuesta_truco and not esperando_respuesta_envido:
+	# Truco
+	if not hay_respuesta_pendiente:
 		if nivel_truco == "nada" and quien_canto_truco != "jugador":
 			acciones.append("truco")
 		elif nivel_truco == "truco" and quien_canto_truco != "jugador":
@@ -163,27 +182,26 @@ func _obtener_acciones_jugador() -> Array:
 		elif nivel_truco == "retruco" and quien_canto_truco != "jugador":
 			acciones.append("vale4")
 
-	# Respuestas a truco
+	# Respuestas a truco de la IA
 	if esperando_respuesta_truco and quien_canto_truco == "ia":
 		acciones.append("quiero_truco")
 		acciones.append("no_quiero_truco")
-		# Puede subir la apuesta
 		if nivel_truco == "truco":
 			acciones.append("retruco")
 		elif nivel_truco == "retruco":
 			acciones.append("vale4")
-		# Envido tiene prioridad: puede responder con envido al truco en primera mano
+		# Puede responder con envido (prioridad)
 		if puede_envido:
 			acciones.append("envido")
 			acciones.append("real_envido")
 
-	# Respuestas a envido
+	# Respuestas a envido de la IA
 	if esperando_respuesta_envido and quien_canto_envido == "ia":
 		acciones.append("quiero_envido")
 		acciones.append("no_quiero_envido")
 
 	# Retirarse
-	if not esperando_respuesta_truco and not esperando_respuesta_envido:
+	if not hay_respuesta_pendiente:
 		acciones.append("retirarse")
 
 	return acciones
@@ -193,7 +211,10 @@ func _obtener_acciones_jugador() -> Array:
 # ============================================================
 
 func jugador_jugar_carta(indice: int) -> void:
-	if estado != Estado.ESPERANDO_JUGADOR and estado != Estado.ESPERANDO_ENVIDO:
+	# Solo puede jugar en su turno y sin respuestas pendientes
+	if estado != Estado.TURNO_JUGADOR:
+		return
+	if esperando_respuesta_truco or esperando_respuesta_envido:
 		return
 	if indice < 0 or indice >= cartas_jugador.size():
 		return
@@ -201,20 +222,17 @@ func jugador_jugar_carta(indice: int) -> void:
 	carta_jugada_jugador = cartas_jugador[indice]
 	cartas_jugador.remove_at(indice)
 
-	# Si la IA ya jugó, resolver mano
-	# (al resolver la mano 0, envido se marca como resuelto)
 	if carta_jugada_ia != null:
 		_resolver_mano()
 	else:
-		# Turno de la IA
 		turno_jugador = false
-		_preparar_turno()
+		_siguiente_turno()
 
 func jugador_cantar_envido(nivel: String) -> void:
 	if mano_actual != 0 or envido_resuelto or envido_cantado or carta_jugada_jugador != null:
 		return
 
-	# Si había truco pendiente, guardarlo (envido tiene prioridad)
+	# Si había truco pendiente, guardarlo
 	if esperando_respuesta_truco:
 		truco_pendiente = true
 		truco_pendiente_nivel = nivel_truco
@@ -225,9 +243,9 @@ func jugador_cantar_envido(nivel: String) -> void:
 	envido_nivel = nivel
 	quien_canto_envido = "jugador"
 	esperando_respuesta_envido = true
-	emit_signal("mensaje", "¡Cantaste " + nivel.replace("_", " ") + "!")
+	emit_signal("mensaje", "Cantaste " + nivel.replace("_", " ") + "!")
 
-	# IA decide si acepta
+	# IA decide
 	var acepta: bool = ia_brain.decidir_envido_respuesta(cartas_ia, nivel, puntos_ia, puntos_jugador)
 	_procesar_respuesta_envido("ia", acepta)
 
@@ -237,26 +255,23 @@ func jugador_cantar_truco(nivel: String) -> void:
 	esperando_respuesta_truco = true
 	truco_fue_cantado = true
 	emit_signal("truco_cantado", "jugador", nivel)
-	emit_signal("mensaje", "¡Cantaste " + nivel + "!")
+	emit_signal("mensaje", "Cantaste " + nivel + "!")
 
-	# En primera mano, la IA puede responder con envido primero (tiene prioridad)
-	# Solo si la IA no tiró su carta todavía
+	# IA puede responder con envido primero (prioridad, primera mano)
 	if mano_actual == 0 and not envido_resuelto and not envido_cantado and carta_jugada_ia == null:
 		var decision_envido: String = ia_brain.decidir_cantar_envido(cartas_ia, puntos_ia, puntos_jugador)
 		if decision_envido != "":
-			# Guardar truco como pendiente
 			truco_pendiente = true
 			truco_pendiente_nivel = nivel_truco
 			truco_pendiente_quien = quien_canto_truco
 			esperando_respuesta_truco = false
-			# Cantar envido
+
 			envido_cantado = true
 			envido_nivel = decision_envido
 			quien_canto_envido = "ia"
 			esperando_respuesta_envido = true
 			emit_signal("mensaje", "La IA responde con " + decision_envido.replace("_", " ") + "! (envido tiene prioridad)")
-			turno_jugador = true
-			_preparar_turno()
+			_pedir_respuesta_jugador()
 			return
 
 	# IA decide sobre el truco
@@ -288,7 +303,6 @@ func _procesar_respuesta_truco(quien_responde: String, respuesta: String) -> voi
 	esperando_respuesta_truco = false
 
 	if respuesta == "no_quiero":
-		# El que no quiso pierde los puntos del nivel anterior
 		var pts_anterior: int
 		match nivel_truco:
 			"truco": pts_anterior = 1
@@ -298,7 +312,7 @@ func _procesar_respuesta_truco(quien_responde: String, respuesta: String) -> voi
 
 		if quien_responde == "ia":
 			puntos_jugador += pts_anterior
-			emit_signal("mensaje", "La IA no quiso. Ganás " + str(pts_anterior) + " punto(s).")
+			emit_signal("mensaje", "La IA no quiso. Ganas " + str(pts_anterior) + " punto(s).")
 		else:
 			puntos_ia += pts_anterior
 			emit_signal("mensaje", "No quisiste. La IA gana " + str(pts_anterior) + " punto(s).")
@@ -312,22 +326,21 @@ func _procesar_respuesta_truco(quien_responde: String, respuesta: String) -> voi
 			emit_signal("mensaje", "La IA quiere el " + nivel_truco + ".")
 		else:
 			emit_signal("mensaje", "Aceptaste el " + nivel_truco + ".")
-		_preparar_turno()
+		# Continuar el juego - volver al turno que corresponde
+		_siguiente_turno()
 
 	elif respuesta in ["retruco", "vale4"]:
-		# Sube la apuesta
 		nivel_truco = respuesta
 		quien_canto_truco = quien_responde
 		esperando_respuesta_truco = true
 		if quien_responde == "ia":
 			emit_signal("truco_cantado", "ia", respuesta)
 			emit_signal("mensaje", "La IA canta " + respuesta + "!")
-			# Ahora el jugador debe responder
 			turno_jugador = true
-			_preparar_turno()
+			_pedir_respuesta_jugador()
 		else:
 			emit_signal("truco_cantado", "jugador", respuesta)
-			emit_signal("mensaje", "¡Cantaste " + respuesta + "!")
+			emit_signal("mensaje", "Cantaste " + respuesta + "!")
 			var resp_ia: String = ia_brain.decidir_truco_respuesta(cartas_ia, respuesta, manos_ia, manos_jugador, puntos_ia, puntos_jugador)
 			_procesar_respuesta_truco("ia", resp_ia)
 
@@ -340,20 +353,19 @@ func _procesar_respuesta_envido(quien_responde: String, acepta: bool) -> void:
 	envido_resuelto = true
 
 	if not acepta:
-		# El que no quiso pierde 1 punto
 		if quien_responde == "ia":
 			puntos_jugador += 1
-			emit_signal("mensaje", "La IA no quiso el envido. Ganás 1 punto.")
+			emit_signal("mensaje", "La IA no quiso el envido. Ganas 1 punto.")
 		else:
 			puntos_ia += 1
 			emit_signal("mensaje", "No quisiste el envido. La IA gana 1 punto.")
 		emit_signal("puntos_actualizados", puntos_jugador, puntos_ia)
-		_preparar_turno()
+		_post_envido()
 		return
 
 	# Se juega el envido
-	var env_jugador: int = GameData.calcular_envido(cartas_jugador + _cartas_jugadas_jugador())
-	var env_ia: int = GameData.calcular_envido(cartas_ia + _cartas_jugadas_ia())
+	var env_jugador: int = GameData.calcular_envido(cartas_jugador + _historial_jugador)
+	var env_ia: int = GameData.calcular_envido(cartas_ia + _historial_ia)
 	var pts_envido: int = GameData.PUNTOS_ENVIDO.get(envido_nivel, 2)
 
 	var ganador_env: String
@@ -364,7 +376,6 @@ func _procesar_respuesta_envido(quien_responde: String, acepta: bool) -> void:
 		puntos_ia += pts_envido
 		ganador_env = "ia"
 	else:
-		# Empate: gana el mano
 		if es_mano_jugador:
 			puntos_jugador += pts_envido
 			ganador_env = "jugador"
@@ -379,44 +390,44 @@ func _procesar_respuesta_envido(quien_responde: String, acepta: bool) -> void:
 	emit_signal("envido_resultado", env_jugador, env_ia, ganador_env)
 	emit_signal("puntos_actualizados", puntos_jugador, puntos_ia)
 
-	_verificar_fin_juego()
-	if estado != Estado.FIN_JUEGO:
-		# Si había truco pendiente, retomarlo ahora que envido se resolvió
-		if truco_pendiente:
-			truco_pendiente = false
-			nivel_truco = truco_pendiente_nivel
-			quien_canto_truco = truco_pendiente_quien
-			esperando_respuesta_truco = true
-			if quien_canto_truco == "ia":
-				emit_signal("mensaje", "Ahora respondé al " + nivel_truco + " de la IA.")
-				turno_jugador = true
-				_preparar_turno()
-			else:
-				emit_signal("mensaje", "La IA responde a tu " + nivel_truco + ".")
-				var respuesta: String = ia_brain.decidir_truco_respuesta(cartas_ia, nivel_truco, manos_ia, manos_jugador, puntos_ia, puntos_jugador)
-				_procesar_respuesta_truco("ia", respuesta)
+	_post_envido()
+
+func _post_envido() -> void:
+	# Verificar si alguien gano por puntos de envido
+	if _verificar_fin_juego():
+		return
+
+	# Si habia truco pendiente, retomarlo
+	if truco_pendiente:
+		truco_pendiente = false
+		nivel_truco = truco_pendiente_nivel
+		quien_canto_truco = truco_pendiente_quien
+		esperando_respuesta_truco = true
+		if quien_canto_truco == "ia":
+			emit_signal("mensaje", "Ahora responde al " + nivel_truco + " de la IA.")
+			turno_jugador = true
+			_pedir_respuesta_jugador()
 		else:
-			_preparar_turno()
-
-# Helper: cartas ya jugadas (para calcular envido con la mano original)
-var _historial_jugador: Array[Carta] = []
-var _historial_ia: Array[Carta] = []
-
-func _cartas_jugadas_jugador() -> Array[Carta]:
-	return _historial_jugador
-
-func _cartas_jugadas_ia() -> Array[Carta]:
-	return _historial_ia
+			emit_signal("mensaje", "La IA responde a tu " + nivel_truco + ".")
+			var respuesta: String = ia_brain.decidir_truco_respuesta(cartas_ia, nivel_truco, manos_ia, manos_jugador, puntos_ia, puntos_jugador)
+			_procesar_respuesta_truco("ia", respuesta)
+	else:
+		# Restaurar el turno al que corresponde (el mano juega primero)
+		turno_jugador = _turno_original
+		_siguiente_turno()
 
 # ============================================================
 # TURNO DE LA IA
 # ============================================================
 
 func _turno_ia() -> void:
-	# Esperar un momento para que se sienta natural
 	await get_tree().create_timer(0.8).timeout
 
-	# ¿La IA quiere cantar envido? (primera mano, solo si no tiró su carta)
+	# Verificar que no cambio el estado durante la espera
+	if estado != Estado.TURNO_IA:
+		return
+
+	# Cantar envido?
 	if mano_actual == 0 and not envido_resuelto and not envido_cantado and carta_jugada_ia == null:
 		var decision_envido: String = ia_brain.decidir_cantar_envido(cartas_ia, puntos_ia, puntos_jugador)
 		if decision_envido != "":
@@ -426,10 +437,10 @@ func _turno_ia() -> void:
 			esperando_respuesta_envido = true
 			emit_signal("mensaje", "La IA canta " + decision_envido.replace("_", " ") + "!")
 			turno_jugador = true
-			_preparar_turno()
+			_pedir_respuesta_jugador()
 			return
 
-	# ¿La IA quiere cantar truco?
+	# Cantar truco?
 	if not esperando_respuesta_truco and not esperando_respuesta_envido:
 		var decision_truco: String = ia_brain.decidir_cantar_truco(cartas_ia, nivel_truco, manos_ia, manos_jugador, puntos_ia, puntos_jugador)
 		if decision_truco != "":
@@ -440,7 +451,7 @@ func _turno_ia() -> void:
 			emit_signal("truco_cantado", "ia", decision_truco)
 			emit_signal("mensaje", "La IA canta " + decision_truco + "!")
 			turno_jugador = true
-			_preparar_turno()
+			_pedir_respuesta_jugador()
 			return
 
 	# Jugar carta
@@ -449,21 +460,20 @@ func _turno_ia() -> void:
 	cartas_ia.remove_at(indice_carta)
 	emit_signal("carta_ia_jugada", carta_jugada_ia)
 
-	# Si el jugador ya jugó, resolver
 	if carta_jugada_jugador != null:
 		_resolver_mano()
 	else:
 		turno_jugador = true
-		_preparar_turno()
+		_siguiente_turno()
 
 # ============================================================
 # RESOLVER MANO
 # ============================================================
 
 func _resolver_mano() -> void:
-	estado = Estado.RESOLVIENDO_MANO
+	estado = Estado.RESOLVIENDO
 
-	# Al completarse la primera mano, ya no se puede cantar envido
+	# Al completar la primera mano, no se puede cantar envido mas
 	if mano_actual == 0:
 		envido_resuelto = true
 
@@ -487,7 +497,6 @@ func _resolver_mano() -> void:
 		else:
 			manos_ia += 1
 			ganador = "ia"
-		# El que ganó la mano empieza la siguiente
 		turno_jugador = (ganador == "jugador")
 
 	_historial_jugador.append(carta_jugada_jugador)
@@ -499,19 +508,22 @@ func _resolver_mano() -> void:
 	carta_jugada_ia = null
 	mano_actual += 1
 
-	# ¿Alguien ganó 2 manos?
+	# Guardar turno original para la nueva mano
+	_turno_original = turno_jugador
+
+	# Alguien gano 2 manos?
 	if manos_jugador >= 2:
 		_ganar_ronda("jugador")
 	elif manos_ia >= 2:
 		_ganar_ronda("ia")
 	elif mano_actual >= 3:
-		# 3 manos jugadas sin ganador claro → gana el mano
+		# 3 manos sin ganador claro: gana el mano
 		if es_mano_jugador:
 			_ganar_ronda("jugador")
 		else:
 			_ganar_ronda("ia")
 	else:
-		_preparar_turno()
+		_siguiente_turno()
 
 func _ganar_ronda(ganador: String) -> void:
 	var pts: int = GameData.PUNTOS_TRUCO.get(nivel_truco, 1)
@@ -519,7 +531,6 @@ func _ganar_ronda(ganador: String) -> void:
 		puntos_jugador += pts
 	else:
 		puntos_ia += pts
-
 	emit_signal("puntos_actualizados", puntos_jugador, puntos_ia)
 	_fin_ronda(ganador)
 
@@ -528,19 +539,19 @@ func _fin_ronda(ganador: String) -> void:
 	_historial_jugador.clear()
 	_historial_ia.clear()
 	emit_signal("ronda_terminada", ganador)
-
-	# Cambiar mano
 	es_mano_jugador = not es_mano_jugador
-
 	_verificar_fin_juego()
 
-func _verificar_fin_juego() -> void:
+func _verificar_fin_juego() -> bool:
 	if puntos_jugador >= GameData.PUNTOS_OBJETIVO:
 		estado = Estado.FIN_JUEGO
 		emit_signal("juego_terminado", "jugador")
+		return true
 	elif puntos_ia >= GameData.PUNTOS_OBJETIVO:
 		estado = Estado.FIN_JUEGO
 		emit_signal("juego_terminado", "ia")
+		return true
+	return false
 
 func siguiente_ronda() -> void:
 	if estado == Estado.FIN_JUEGO:
