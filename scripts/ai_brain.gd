@@ -12,7 +12,7 @@ extends Node
 func _fuerza_mano(cartas: Array[Carta]) -> float:
 	if cartas.is_empty():
 		return 0.0
-	var total := 0.0
+	var total: float = 0.0
 	for c in cartas:
 		total += c.obtener_jerarquia()
 	# Max teórico: 15+14+13 = 42
@@ -20,10 +20,10 @@ func _fuerza_mano(cartas: Array[Carta]) -> float:
 
 ## Devuelve la carta más alta de la mano.
 func _mejor_carta(cartas: Array[Carta]) -> int:
-	var mejor_idx := 0
-	var mejor_jer := 0
+	var mejor_idx: int = 0
+	var mejor_jer: int = 0
 	for i in range(cartas.size()):
-		var jer := cartas[i].obtener_jerarquia()
+		var jer: int = cartas[i].obtener_jerarquia()
 		if jer > mejor_jer:
 			mejor_jer = jer
 			mejor_idx = i
@@ -31,10 +31,10 @@ func _mejor_carta(cartas: Array[Carta]) -> int:
 
 ## Devuelve la carta más baja.
 func _peor_carta(cartas: Array[Carta]) -> int:
-	var peor_idx := 0
-	var peor_jer := 999
+	var peor_idx: int = 0
+	var peor_jer: int = 999
 	for i in range(cartas.size()):
-		var jer := cartas[i].obtener_jerarquia()
+		var jer: int = cartas[i].obtener_jerarquia()
 		if jer < peor_jer:
 			peor_jer = jer
 			peor_idx = i
@@ -42,11 +42,11 @@ func _peor_carta(cartas: Array[Carta]) -> int:
 
 ## Devuelve la carta más baja que gana a la carta rival, o -1.
 func _carta_que_gana_justa(cartas: Array[Carta], rival: Carta) -> int:
-	var jer_rival := rival.obtener_jerarquia()
-	var mejor_idx := -1
-	var mejor_jer := 999
+	var jer_rival: int = rival.obtener_jerarquia()
+	var mejor_idx: int = -1
+	var mejor_jer: int = 999
 	for i in range(cartas.size()):
-		var jer := cartas[i].obtener_jerarquia()
+		var jer: int = cartas[i].obtener_jerarquia()
 		if jer > jer_rival and jer < mejor_jer:
 			mejor_jer = jer
 			mejor_idx = i
@@ -62,7 +62,7 @@ func elegir_carta(cartas: Array[Carta], carta_rival: Carta, manos_ganadas_ia: in
 
 	# Si el rival ya jugó, intentar ganar con la carta justa
 	if carta_rival != null:
-		var idx_gana := _carta_que_gana_justa(cartas, carta_rival)
+		var idx_gana: int = _carta_que_gana_justa(cartas, carta_rival)
 		if idx_gana >= 0:
 			return idx_gana
 		# No puede ganar → tirar la peor
@@ -73,7 +73,7 @@ func elegir_carta(cartas: Array[Carta], carta_rival: Carta, manos_ganadas_ia: in
 		0:
 			# Primera mano: jugar carta media-alta
 			if cartas.size() == 3:
-				var indices := _ordenar_por_jerarquia(cartas)
+				var indices: Array = _ordenar_por_jerarquia(cartas)
 				return indices[1]  # La del medio
 			return _mejor_carta(cartas)
 		1:
@@ -96,7 +96,7 @@ func _ordenar_por_jerarquia(cartas: Array[Carta]) -> Array:
 	for i in range(indices.size()):
 		for j in range(i + 1, indices.size()):
 			if cartas[indices[i]].obtener_jerarquia() > cartas[indices[j]].obtener_jerarquia():
-				var tmp = indices[i]
+				var tmp: int = indices[i]
 				indices[i] = indices[j]
 				indices[j] = tmp
 	return indices
@@ -106,7 +106,7 @@ func _ordenar_por_jerarquia(cartas: Array[Carta]) -> Array:
 # ============================================================
 
 func decidir_cantar_envido(cartas: Array[Carta], pts_ia: int, pts_rival: int) -> String:
-	var envido_val := GameData.calcular_envido(cartas)
+	var envido_val: int = GameData.calcular_envido(cartas)
 
 	# Envido fuerte (>= 30): cantar real_envido
 	if envido_val >= 30:
@@ -131,7 +131,7 @@ func decidir_cantar_envido(cartas: Array[Carta], pts_ia: int, pts_rival: int) ->
 # ============================================================
 
 func decidir_envido_respuesta(cartas: Array[Carta], nivel: String, pts_ia: int, pts_rival: int) -> bool:
-	var envido_val := GameData.calcular_envido(cartas)
+	var envido_val: int = GameData.calcular_envido(cartas)
 
 	match nivel:
 		"envido":
@@ -146,7 +146,7 @@ func decidir_envido_respuesta(cartas: Array[Carta], nivel: String, pts_ia: int, 
 # ============================================================
 
 func decidir_cantar_truco(cartas: Array[Carta], nivel_actual: String, manos_ia: int, manos_rival: int, pts_ia: int, pts_rival: int) -> String:
-	var fuerza := _fuerza_mano(cartas)
+	var fuerza: float = _fuerza_mano(cartas)
 
 	# Ya está en vale4, no se puede subir
 	if nivel_actual == "vale4":
@@ -177,7 +177,7 @@ func decidir_cantar_truco(cartas: Array[Carta], nivel_actual: String, manos_ia: 
 # ============================================================
 
 func decidir_truco_respuesta(cartas: Array[Carta], nivel: String, manos_ia: int, manos_rival: int, pts_ia: int, pts_rival: int) -> String:
-	var fuerza := _fuerza_mano(cartas)
+	var fuerza: float = _fuerza_mano(cartas)
 
 	match nivel:
 		"truco":

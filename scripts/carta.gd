@@ -3,9 +3,9 @@ extends Resource
 
 ## Recurso que representa una carta del mazo español.
 
-@export var numero: int
-@export var palo: int  # GameData.Palo
-@export var id: String
+@export var numero: int = 0
+@export var palo: int = 0  # GameData.Palo
+@export var id: String = ""
 
 func _init(p_numero: int = 0, p_palo: int = 0, p_id: String = "") -> void:
 	numero = p_numero
@@ -13,7 +13,10 @@ func _init(p_numero: int = 0, p_palo: int = 0, p_id: String = "") -> void:
 	id = p_id
 
 static func desde_dict(d: Dictionary) -> Carta:
-	return Carta.new(d.numero, d.palo, d.id)
+	var n: int = d.numero
+	var p: int = d.palo
+	var i: String = d.id
+	return Carta.new(n, p, i)
 
 func obtener_jerarquia() -> int:
 	return GameData.JERARQUIA.get(id, 0)

@@ -5,7 +5,7 @@ extends Node
 # --- Palos ---
 enum Palo { ESPADA, BASTO, ORO, COPA }
 
-const PALO_NOMBRE := {
+const PALO_NOMBRE: Dictionary = {
 	Palo.ESPADA: "espada",
 	Palo.BASTO: "basto",
 	Palo.ORO: "oro",
@@ -13,9 +13,7 @@ const PALO_NOMBRE := {
 }
 
 # --- Jerarquía de truco (mayor = mejor) ---
-# Cada carta se identifica como "numero_palo"
-# Valores del 1 al 15 donde 15 es la mejor carta
-const JERARQUIA := {
+const JERARQUIA: Dictionary = {
 	# Ancho de espadas
 	"1_espada": 15,
 	# Ancho de bastos
@@ -54,30 +52,27 @@ func envido_valor(numero: int) -> int:
 	return numero
 
 # --- Calcular envido de una mano de 3 cartas ---
-# Devuelve el mejor puntaje de envido.
-func calcular_envido(cartas: Array) -> int:
-	var mejor := 0
+func calcular_envido(cartas: Array[Carta]) -> int:
+	var mejor: int = 0
 
-	# Revisar todos los pares del mismo palo
-	for i in range(cartas.size()):
-		for j in range(i + 1, cartas.size()):
+	for i: int in range(cartas.size()):
+		for j: int in range(i + 1, cartas.size()):
 			if cartas[i].palo == cartas[j].palo:
-				var val := 20 + envido_valor(cartas[i].numero) + envido_valor(cartas[j].numero)
+				var val: int = 20 + envido_valor(cartas[i].numero) + envido_valor(cartas[j].numero)
 				mejor = max(mejor, val)
 
-	# Si no hay par del mismo palo, la carta de mayor envido
 	if mejor == 0:
-		for c in cartas:
+		for c: Carta in cartas:
 			mejor = max(mejor, envido_valor(c.numero))
 
 	return mejor
 
 # --- Generar mazo completo (40 cartas, sin 8 ni 9) ---
-func generar_mazo() -> Array:
-	var mazo: Array = []
-	var numeros := [1, 2, 3, 4, 5, 6, 7, 10, 11, 12]
-	for palo in [Palo.ESPADA, Palo.BASTO, Palo.ORO, Palo.COPA]:
-		for num in numeros:
+func generar_mazo() -> Array[Dictionary]:
+	var mazo: Array[Dictionary] = []
+	var numeros: Array[int] = [1, 2, 3, 4, 5, 6, 7, 10, 11, 12]
+	for palo: int in [Palo.ESPADA, Palo.BASTO, Palo.ORO, Palo.COPA]:
+		for num: int in numeros:
 			mazo.append({
 				"numero": num,
 				"palo": palo,
@@ -89,7 +84,7 @@ func obtener_jerarquia(carta: Dictionary) -> int:
 	return JERARQUIA.get(carta.id, 0)
 
 # --- Puntos base del truco ---
-const PUNTOS_TRUCO := {
+const PUNTOS_TRUCO: Dictionary = {
 	"nada": 1,
 	"truco": 2,
 	"retruco": 3,
@@ -97,9 +92,9 @@ const PUNTOS_TRUCO := {
 }
 
 # --- Puntos del envido ---
-const PUNTOS_ENVIDO := {
+const PUNTOS_ENVIDO: Dictionary = {
 	"envido": 2,
 	"real_envido": 3,
 }
 
-const PUNTOS_OBJETIVO := 30
+const PUNTOS_OBJETIVO: int = 30

@@ -76,17 +76,17 @@ func _on_cartas_repartidas(cartas_j: Array, cant_ia: int) -> void:
 
 	# Cartas del jugador (visibles, clickeables)
 	for i in range(cartas_j.size()):
-		var btn := Button.new()
+		var btn: Button = Button.new()
 		btn.text = cartas_j[i].nombre_legible()
 		btn.custom_minimum_size = Vector2(120, 60)
 		btn.add_theme_font_size_override("font_size", 16)
-		var idx := i
+		var idx: int = i
 		btn.pressed.connect(func(): _on_carta_clickeada(idx))
 		contenedor_cartas_jugador.add_child(btn)
 
 	# Cartas de IA (ocultas)
 	for i in range(cant_ia):
-		var lbl := Label.new()
+		var lbl: Label = Label.new()
 		lbl.text = "[???]"
 		lbl.add_theme_font_size_override("font_size", 18)
 		contenedor_cartas_ia.add_child(lbl)
@@ -104,11 +104,11 @@ func _on_carta_clickeada(indice: int) -> void:
 func _actualizar_cartas_jugador() -> void:
 	_limpiar_contenedor(contenedor_cartas_jugador)
 	for i in range(gm.cartas_jugador.size()):
-		var btn := Button.new()
+		var btn: Button = Button.new()
 		btn.text = gm.cartas_jugador[i].nombre_legible()
 		btn.custom_minimum_size = Vector2(120, 60)
 		btn.add_theme_font_size_override("font_size", 16)
-		var idx := i
+		var idx: int = i
 		btn.pressed.connect(func(): _on_carta_clickeada(idx))
 		contenedor_cartas_jugador.add_child(btn)
 
@@ -125,7 +125,7 @@ func _on_carta_ia_jugada(carta: Carta) -> void:
 func _on_ronda_iniciada() -> void:
 	comodines_mgr.nueva_ronda()
 	_log("[color=cyan]--- Nueva Ronda ---[/color]")
-	var mano_txt := "Sos mano" if gm.es_mano_jugador else "IA es mano"
+	var mano_txt: String = "Sos mano" if gm.es_mano_jugador else "IA es mano"
 	_log(mano_txt)
 	lbl_info.text = mano_txt
 
@@ -133,14 +133,14 @@ func _on_mano_jugada(ganador: String, carta_j: Carta, carta_ia: Carta) -> void:
 	lbl_mesa_jugador.text = carta_j.nombre_legible()
 	lbl_mesa_ia.text = carta_ia.nombre_legible()
 
-	var txt_ganador := "Ganaste!" if ganador == "jugador" else "Gano la IA"
+	var txt_ganador: String = "Ganaste!" if ganador == "jugador" else "Gano la IA"
 	lbl_resultado.text = txt_ganador
 	lbl_mano_score.text = "Manos: Vos " + str(gm.manos_jugador) + " - IA " + str(gm.manos_ia)
 	_log(carta_j.nombre_legible() + " vs " + carta_ia.nombre_legible() + " -> " + txt_ganador)
 
 	# Comodin: Mano Pesada
 	if gm.mano_actual == 1:  # Acaba de terminar mano 0 (mano_actual ya incrementó)
-		var bonus := comodines_mgr.aplicar_mano_pesada(ganador == "jugador")
+		var bonus: int = comodines_mgr.aplicar_mano_pesada(ganador == "jugador")
 		if bonus > 0:
 			if ganador == "jugador":
 				gm.puntos_jugador += bonus
@@ -149,13 +149,13 @@ func _on_mano_jugada(ganador: String, carta_j: Carta, carta_ia: Carta) -> void:
 			gm.emit_signal("puntos_actualizados", gm.puntos_jugador, gm.puntos_ia)
 
 func _on_ronda_terminada(ganador: String) -> void:
-	var txt := "Ganaste la ronda!" if ganador == "jugador" else "La IA gano la ronda"
+	var txt: String = "Ganaste la ronda!" if ganador == "jugador" else "La IA gano la ronda"
 	_log("[color=yellow]" + txt + "[/color]")
 	lbl_resultado.text = txt
 
 	# Comodin: Violento
 	if gm.truco_cantado:
-		var bonus := comodines_mgr.aplicar_violento(ganador == "jugador")
+		var bonus: int = comodines_mgr.aplicar_violento(ganador == "jugador")
 		if bonus > 0:
 			if ganador == "jugador":
 				gm.puntos_jugador += bonus
@@ -167,7 +167,7 @@ func _on_ronda_terminada(ganador: String) -> void:
 	btn_siguiente.visible = true
 
 func _on_juego_terminado(ganador: String) -> void:
-	var txt := "GANASTE EL JUEGO!" if ganador == "jugador" else "PERDISTE... La IA gano"
+	var txt: String = "GANASTE EL JUEGO!" if ganador == "jugador" else "PERDISTE... La IA gano"
 	_log("[color=gold][b]" + txt + "[/b][/color]")
 	lbl_info.text = txt
 	_ocultar_todos_botones()
@@ -189,7 +189,7 @@ func _on_esperando_accion(acciones: Array) -> void:
 	btn_retirarse.visible = "retirarse" in acciones
 
 	# Habilitar click en cartas solo si puede jugar
-	var puede_jugar := "jugar_carta" in acciones
+	var puede_jugar: bool = "jugar_carta" in acciones
 	for child in contenedor_cartas_jugador.get_children():
 		if child is Button:
 			child.disabled = not puede_jugar
@@ -272,8 +272,8 @@ func _log(texto: String) -> void:
 	log_text.append_text("\n" + texto)
 
 func _mostrar_comodines() -> void:
-	var info := comodines_mgr.obtener_comodines_jugador()
-	var txt := "Comodines: "
+	var info: Array = comodines_mgr.obtener_comodines_jugador()
+	var txt: String = "Comodines: "
 	for i in range(info.size()):
 		if i > 0:
 			txt += " | "

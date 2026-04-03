@@ -10,8 +10,8 @@ func _init() -> void:
 
 func reiniciar() -> void:
 	cartas.clear()
-	var datos := GameData.generar_mazo()
-	for d in datos:
+	var datos: Array[Dictionary] = GameData.generar_mazo()
+	for d: Dictionary in datos:
 		cartas.append(Carta.desde_dict(d))
 
 func barajar() -> void:
@@ -19,8 +19,9 @@ func barajar() -> void:
 
 func repartir(cantidad: int) -> Array[Carta]:
 	var mano: Array[Carta] = []
-	for i in range(cantidad):
+	for i: int in range(cantidad):
 		if cartas.is_empty():
 			break
-		mano.append(cartas.pop_back())
+		var carta: Carta = cartas.pop_back() as Carta
+		mano.append(carta)
 	return mano
