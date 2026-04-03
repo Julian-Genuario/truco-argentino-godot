@@ -3,6 +3,7 @@ extends Control
 
 ## Carta visual con diseño profesional para el Truco.
 ## Dibuja la carta completa usando _draw() para maximo control visual.
+## Incluye animaciones de hover suaves.
 
 signal carta_clickeada(indice: int)
 
@@ -15,8 +16,10 @@ var es_mesa: bool = false
 var es_slot_vacio: bool = false
 var es_jugador: bool = true
 
-# Hover
+# Hover con animacion suave
 var _hover: bool = false
+var _hover_progress: float = 0.0  # 0.0 = normal, 1.0 = full hover
+var _hover_tween: Tween = null
 
 # Simbolos de palos (caracteres Unicode estilizados)
 const PALO_SIMBOLO: Dictionary = {
@@ -73,8 +76,8 @@ static func crear_carta_jugador(carta: Carta, idx: int) -> CartaVisual:
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			cv.carta_clickeada.emit(cv.indice)
 	)
-	cv.mouse_entered.connect(func(): cv._hover = true; cv.queue_redraw())
-	cv.mouse_exited.connect(func(): cv._hover = false; cv.queue_redraw())
+	cv.mouse_entered.connect(func(): cv._set_hover(true))
+	cv.mouse_exited.connect(func(): cv._set_hover(false))
 	return cv
 
 
@@ -107,6 +110,22 @@ static func crear_slot_vacio() -> CartaVisual:
 	cv.custom_minimum_size = Vector2(80, 115)
 	cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return cv
+
+# ============================================================
+# HOVER ANIMADO
+# ============================================================
+
+func _set_hover(value: bool) -> void:
+	_hover = value
+	if _hover_tween:
+		_hover_tween.kill()
+	_hover_tween = create_tween()
+	var target: float = 1.0 if value else 0.0
+	_hover_tween.tween_property(self, "_hover_progress", target, 0.15).set_trans(Tween.TRANS_SINE)
+
+func _process(_delta: float) -> void:
+	if not es_oculta and not es_slot_vacio and not es_mesa:
+		queue_redraw()
 
 # ============================================================
 # DIBUJO
@@ -177,19 +196,26 @@ func _dibujar_carta_visible() -> void:
 	var rect: Rect2 = Rect2(Vector2.ZERO, size)
 	var color_palo: Color = PALO_COLOR.get(palo_str, Color.WHITE)
 	var color_oscuro: Color = PALO_COLOR_OSCURO.get(palo_str, Color.GRAY)
+	var hp: float = _hover_progress  # 0..1 smooth
 
-	# Sombra
-	var sombra_offset: float = 3.0 if not es_mesa else 2.0
+	# Sombra - crece con hover
+	var sombra_base: float = 3.0 if not es_mesa else 2.0
+	var sombra_offset: float = sombra_base + hp * 3.0
 	var sombra: Rect2 = Rect2(Vector2(sombra_offset, sombra_offset), size)
-	draw_rect(sombra, Color(0, 0, 0, 0.35), true)
+	draw_rect(sombra, Color(0, 0, 0, 0.35 + hp * 0.1), true)
 
-	# Hover - elevar carta
-	if _hover and not es_mesa:
-		var hover_rect: Rect2 = Rect2(Vector2(-1, -3), size + Vector2(2, 3))
-		draw_rect(hover_rect, Color(1, 0.95, 0.7, 0.15), true)
+	# Hover - glow suave alrededor
+	if hp > 0.01 and not es_mesa:
+		var glow_expand: float = hp * 3.0
+		var glow_rect: Rect2 = Rect2(Vector2(-glow_expand, -glow_expand - hp * 4.0), size + Vector2(glow_expand * 2, glow_expand * 2 + hp * 4.0))
+		draw_rect(glow_rect, Color(1, 0.95, 0.7, 0.12 * hp), true)
 
-	# Fondo principal - crema elegante
-	var bg_color: Color = Color(0.97, 0.94, 0.88) if not _hover else Color(1.0, 0.97, 0.92)
+	# Fondo principal - crema elegante, mas claro con hover
+	var bg_color: Color = Color(
+		lerp(0.97, 1.0, hp),
+		lerp(0.94, 0.97, hp),
+		lerp(0.88, 0.92, hp)
+	)
 	draw_rect(rect, bg_color, true)
 
 	# Franja superior con color del palo
@@ -227,13 +253,18 @@ func _dibujar_carta_visible() -> void:
 	# Numero invertido - esquina inferior derecha
 	_dibujar_texto(num_text, Vector2(size.x - 24 if not es_mesa else size.x - 20, size.y - 10 if not es_mesa else size.y - 8), num_size, color_oscuro)
 
-	# Borde de la carta
+	# Borde de la carta - transicion suave
 	var borde_color: Color
 	if es_mesa:
 		borde_color = Color(0.2, 0.75, 0.3) if es_jugador else Color(0.75, 0.2, 0.2)
 	else:
-		borde_color = Color(0.7, 0.6, 0.35) if not _hover else Color(0.9, 0.8, 0.4)
-	draw_rect(rect, borde_color, false, 2.0 if not _hover else 2.5)
+		borde_color = Color(
+			lerp(0.7, 0.9, hp),
+			lerp(0.6, 0.8, hp),
+			lerp(0.35, 0.4, hp)
+		)
+	var borde_width: float = 2.0 + hp * 0.5
+	draw_rect(rect, borde_color, false, borde_width)
 
 	# Indicador de quien la tiro en mesa
 	if es_mesa:

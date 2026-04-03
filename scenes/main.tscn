@@ -274,12 +274,37 @@ scroll_following = true
 [node name="ComodinesPanel" type="PanelContainer" parent="VBox"]
 layout_mode = 2
 
-[node name="LabelComodines" type="Label" parent="VBox/ComodinesPanel"]
+[node name="ComodinesVBox" type="VBoxContainer" parent="VBox/ComodinesPanel"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 12
-theme_override_colors/font_color = Color(0.8, 0.5, 1, 1)
-text = "Comodines: Ninguno"
+theme_override_constants/separation = 2
+
+[node name="LabelComodinesTitle" type="Label" parent="VBox/ComodinesPanel/ComodinesVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 11
+theme_override_colors/font_color = Color(0.7, 0.5, 0.9, 0.8)
+text = "TUS COMODINES"
 horizontal_alignment = 1
+
+[node name="ComodinesHBox" type="HBoxContainer" parent="VBox/ComodinesPanel/ComodinesVBox"]
+layout_mode = 2
+alignment = 1
+theme_override_constants/separation = 8
+
+[node name="ComodinPopup" type="Label" parent="."]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -200.0
+offset_right = 200.0
+offset_top = 280.0
+offset_bottom = 330.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 20
+theme_override_colors/font_color = Color(1, 0.9, 0.3, 1)
+text = ""
+horizontal_alignment = 1
+vertical_alignment = 1
 
 [node name="GameManager" type="Node" parent="."]
 script = ExtResource("2")
