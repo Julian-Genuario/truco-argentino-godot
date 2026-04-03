@@ -4,8 +4,8 @@
 
 [application]
 
-config/name="Truco Argentino"
-run/main_scene="res://scenes/main.tscn"
+config/name="Quiero Vale 4"
+run/main_scene="res://scenes/menu.tscn"
 config/features=PackedStringArray("4.6")
 
 [autoload]
