@@ -4,35 +4,35 @@ extends Control
 ## Incluye animaciones de cartas, comodines visuales estilizados, y efectos.
 
 @onready var gm: Node = $GameManager
-@onready var lbl_pts_jugador: Label = $VBox/TopBar/TopBarContent/PuntajeJugador
-@onready var lbl_pts_ia: Label = $VBox/TopBar/TopBarContent/PuntajeIA
-@onready var lbl_info: Label = $VBox/TopBar/TopBarContent/InfoRonda
-@onready var contenedor_cartas_ia: HBoxContainer = $VBox/ZonaIA/CartasIA
-@onready var contenedor_cartas_jugador: HBoxContainer = $VBox/ZonaJugador/CartasJugador
-@onready var lbl_resultado: Label = $VBox/ZonaMesa/ResultadoMano
-@onready var lbl_mano_score: Label = $VBox/ZonaMesa/ManoScore
-@onready var log_text: RichTextLabel = $VBox/Log
-@onready var comodines_hbox: HBoxContainer = $VBox/ComodinesPanel/ComodinesVBox/ComodinesHBox
+@onready var lbl_pts_jugador: Label = $HBoxPrincipal/VBox/TopBar/TopBarContent/PuntajeJugador
+@onready var lbl_pts_ia: Label = $HBoxPrincipal/VBox/TopBar/TopBarContent/PuntajeIA
+@onready var lbl_info: Label = $HBoxPrincipal/VBox/TopBar/TopBarContent/InfoRonda
+@onready var contenedor_cartas_ia: HBoxContainer = $HBoxPrincipal/VBox/ZonaIA/CartasIA
+@onready var contenedor_cartas_jugador: HBoxContainer = $HBoxPrincipal/VBox/ZonaJugador/CartasJugador
+@onready var lbl_resultado: Label = $HBoxPrincipal/VBox/ZonaMesa/ResultadoMano
+@onready var lbl_mano_score: Label = $HBoxPrincipal/VBox/ZonaMesa/ManoScore
+@onready var log_text: RichTextLabel = $HBoxPrincipal/VBox/Log
+@onready var comodines_container: VBoxContainer = $HBoxPrincipal/ComodinesLateral/ComodinesMargen/ComodinesVBox/ComodinesHBox
 @onready var comodin_popup: Label = $ComodinPopup
 
 # Contenedores de las 3 manos en la mesa
-@onready var cartas_m1: HBoxContainer = $VBox/ZonaMesa/MesaManos/Mano1/CartasM1
-@onready var cartas_m2: HBoxContainer = $VBox/ZonaMesa/MesaManos/Mano2/CartasM2
-@onready var cartas_m3: HBoxContainer = $VBox/ZonaMesa/MesaManos/Mano3/CartasM3
-@onready var result_m1: Label = $VBox/ZonaMesa/MesaManos/Mano1/ResultM1
-@onready var result_m2: Label = $VBox/ZonaMesa/MesaManos/Mano2/ResultM2
-@onready var result_m3: Label = $VBox/ZonaMesa/MesaManos/Mano3/ResultM3
+@onready var cartas_m1: HBoxContainer = $HBoxPrincipal/VBox/ZonaMesa/MesaManos/Mano1/CartasM1
+@onready var cartas_m2: HBoxContainer = $HBoxPrincipal/VBox/ZonaMesa/MesaManos/Mano2/CartasM2
+@onready var cartas_m3: HBoxContainer = $HBoxPrincipal/VBox/ZonaMesa/MesaManos/Mano3/CartasM3
+@onready var result_m1: Label = $HBoxPrincipal/VBox/ZonaMesa/MesaManos/Mano1/ResultM1
+@onready var result_m2: Label = $HBoxPrincipal/VBox/ZonaMesa/MesaManos/Mano2/ResultM2
+@onready var result_m3: Label = $HBoxPrincipal/VBox/ZonaMesa/MesaManos/Mano3/ResultM3
 
 # Botones
-@onready var btn_envido: Button = $VBox/Acciones/BtnEnvido
-@onready var btn_real_envido: Button = $VBox/Acciones/BtnRealEnvido
-@onready var btn_truco: Button = $VBox/Acciones/BtnTruco
-@onready var btn_retruco: Button = $VBox/Acciones/BtnRetruco
-@onready var btn_vale4: Button = $VBox/Acciones/BtnVale4
-@onready var btn_quiero: Button = $VBox/Acciones/BtnQuiero
-@onready var btn_no_quiero: Button = $VBox/Acciones/BtnNoQuiero
-@onready var btn_retirarse: Button = $VBox/Acciones/BtnRetirarse
-@onready var btn_siguiente: Button = $VBox/Acciones/BtnSiguiente
+@onready var btn_envido: Button = $HBoxPrincipal/VBox/Acciones/BtnEnvido
+@onready var btn_real_envido: Button = $HBoxPrincipal/VBox/Acciones/BtnRealEnvido
+@onready var btn_truco: Button = $HBoxPrincipal/VBox/Acciones/BtnTruco
+@onready var btn_retruco: Button = $HBoxPrincipal/VBox/Acciones/BtnRetruco
+@onready var btn_vale4: Button = $HBoxPrincipal/VBox/Acciones/BtnVale4
+@onready var btn_quiero: Button = $HBoxPrincipal/VBox/Acciones/BtnQuiero
+@onready var btn_no_quiero: Button = $HBoxPrincipal/VBox/Acciones/BtnNoQuiero
+@onready var btn_retirarse: Button = $HBoxPrincipal/VBox/Acciones/BtnRetirarse
+@onready var btn_siguiente: Button = $HBoxPrincipal/VBox/Acciones/BtnSiguiente
 
 var comodines_mgr: ComodinesManager
 
@@ -92,14 +92,14 @@ func _ready() -> void:
 # ============================================================
 
 func _mostrar_comodines() -> void:
-	_limpiar_contenedor(comodines_hbox)
+	_limpiar_contenedor(comodines_container)
 	_comodin_visuals.clear()
 
 	for i in range(comodines_mgr.comodines_jugador.size()):
 		var tipo: int = comodines_mgr.comodines_jugador[i]
 		var info: Dictionary = comodines_mgr.obtener_info(tipo)
 		var cv: ComodinVisual = ComodinVisual.crear(tipo, info)
-		comodines_hbox.add_child(cv)
+		comodines_container.add_child(cv)
 		_comodin_visuals[info.get("nombre", "")] = cv
 
 		# Animacion de entrada escalonada
