@@ -97,4 +97,45 @@ const PUNTOS_ENVIDO: Dictionary = {
 	"real_envido": 3,
 }
 
-const PUNTOS_OBJETIVO: int = 30
+const PUNTOS_OBJETIVO_DEFAULT: int = 30
+
+# --- Configuración de partida (seteada desde el menú) ---
+var puntos_objetivo: int = 30
+var con_flor: bool = false
+var encuentro_actual: int = 1  # 1, 2, 3
+const TOTAL_ENCUENTROS: int = 3
+
+# Comodines por encuentro: cada vez más
+const COMODINES_POR_ENCUENTRO: Dictionary = {
+	1: 2,
+	2: 3,
+	3: 5,
+}
+
+func reset_partida() -> void:
+	encuentro_actual = 1
+
+func avanzar_encuentro() -> bool:
+	encuentro_actual += 1
+	return encuentro_actual <= TOTAL_ENCUENTROS
+
+# --- Flor: 3 cartas del mismo palo ---
+func tiene_flor(cartas: Array) -> bool:
+	if cartas.size() < 3:
+		return false
+	return cartas[0].palo == cartas[1].palo and cartas[1].palo == cartas[2].palo
+
+func calcular_flor(cartas: Array) -> int:
+	if not tiene_flor(cartas):
+		return 0
+	var total: int = 20
+	for c in cartas:
+		total += envido_valor(c.numero)
+	return total
+
+# --- Puntos de flor ---
+const PUNTOS_FLOR: Dictionary = {
+	"flor": 3,
+	"contra_flor": 6,
+	"contra_flor_al_resto": 0,  # especial: se calcula dinámicamente
+}

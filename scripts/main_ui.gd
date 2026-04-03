@@ -1,7 +1,7 @@
 extends Control
 
-## Script principal de UI. Conecta el GameManager con la interfaz visual.
-## Incluye animaciones de cartas, comodines visuales estilizados, y efectos.
+## UI principal. Conecta GameManager con la interfaz.
+## Soporta flor, encuentros progresivos, y comodines.
 
 @onready var gm: Node = $GameManager
 @onready var lbl_pts_jugador: Label = $HBoxPrincipal/VBox/TopBar/TopBarContent/PuntajeJugador
@@ -14,8 +14,8 @@ extends Control
 @onready var log_text: RichTextLabel = $HBoxPrincipal/VBox/Log
 @onready var comodines_container: VBoxContainer = $HBoxPrincipal/ComodinesLateral/ComodinesMargen/ComodinesVBox/ComodinesHBox
 @onready var comodin_popup: Label = $ComodinPopup
+@onready var lbl_encuentro: Label = $HBoxPrincipal/ComodinesLateral/ComodinesMargen/ComodinesVBox/LabelComodinesTitle
 
-# Contenedores de las 3 manos en la mesa
 @onready var cartas_m1: HBoxContainer = $HBoxPrincipal/VBox/ZonaMesa/MesaManos/Mano1/CartasM1
 @onready var cartas_m2: HBoxContainer = $HBoxPrincipal/VBox/ZonaMesa/MesaManos/Mano2/CartasM2
 @onready var cartas_m3: HBoxContainer = $HBoxPrincipal/VBox/ZonaMesa/MesaManos/Mano3/CartasM3
@@ -23,7 +23,7 @@ extends Control
 @onready var result_m2: Label = $HBoxPrincipal/VBox/ZonaMesa/MesaManos/Mano2/ResultM2
 @onready var result_m3: Label = $HBoxPrincipal/VBox/ZonaMesa/MesaManos/Mano3/ResultM3
 
-# Botones
+# Botones existentes
 @onready var btn_envido: Button = $HBoxPrincipal/VBox/Acciones/BtnEnvido
 @onready var btn_real_envido: Button = $HBoxPrincipal/VBox/Acciones/BtnRealEnvido
 @onready var btn_truco: Button = $HBoxPrincipal/VBox/Acciones/BtnTruco
@@ -34,26 +34,44 @@ extends Control
 @onready var btn_retirarse: Button = $HBoxPrincipal/VBox/Acciones/BtnRetirarse
 @onready var btn_siguiente: Button = $HBoxPrincipal/VBox/Acciones/BtnSiguiente
 
-var comodines_mgr: ComodinesManager
+# Botones de flor (creados dinámicamente)
+var btn_flor: Button
+var btn_contra_flor: Button
 
-# Referencia a los contenedores de mano por indice
+var comodines_mgr: ComodinesManager
 var _contenedores_mano: Array = []
 var _resultados_mano: Array = []
-
-# Mapa nombre_comodin -> ComodinVisual para activar efectos
 var _comodin_visuals: Dictionary = {}
 
 func _ready() -> void:
-	# Crear sistema de comodines
+	# Crear botones de flor dinámicamente
+	btn_flor = Button.new()
+	btn_flor.text = "Flor"
+	btn_flor.custom_minimum_size = Vector2(100, 38)
+	btn_flor.add_theme_font_size_override("font_size", 14)
+	btn_flor.visible = false
+	btn_flor.pressed.connect(_on_btn_flor)
+	$HBoxPrincipal/VBox/Acciones.add_child(btn_flor)
+
+	btn_contra_flor = Button.new()
+	btn_contra_flor.text = "Contra Flor"
+	btn_contra_flor.custom_minimum_size = Vector2(100, 38)
+	btn_contra_flor.add_theme_font_size_override("font_size", 14)
+	btn_contra_flor.visible = false
+	btn_contra_flor.pressed.connect(_on_btn_contra_flor)
+	$HBoxPrincipal/VBox/Acciones.add_child(btn_contra_flor)
+
+	# Comodines segun encuentro
 	comodines_mgr = ComodinesManager.new()
 	add_child(comodines_mgr)
-	comodines_mgr.asignar_comodines_aleatorios(3)
+	var cant_comodines: int = GameData.COMODINES_POR_ENCUENTRO.get(GameData.encuentro_actual, 3)
+	comodines_mgr.asignar_comodines_aleatorios(cant_comodines)
 	comodines_mgr.comodin_activado.connect(_on_comodin_activado)
 
 	_contenedores_mano = [cartas_m1, cartas_m2, cartas_m3]
 	_resultados_mano = [result_m1, result_m2, result_m3]
 
-	# Conectar senales del GameManager
+	# Señales del GM
 	gm.ronda_iniciada.connect(_on_ronda_iniciada)
 	gm.mano_jugada.connect(_on_mano_jugada)
 	gm.ronda_terminada.connect(_on_ronda_terminada)
@@ -65,7 +83,7 @@ func _ready() -> void:
 	gm.carta_ia_jugada.connect(_on_carta_ia_jugada)
 	gm.truco_cantado.connect(_on_truco_cantado)
 
-	# Conectar botones
+	# Botones
 	btn_envido.pressed.connect(_on_btn_envido)
 	btn_real_envido.pressed.connect(_on_btn_real_envido)
 	btn_truco.pressed.connect(_on_btn_truco)
@@ -77,18 +95,24 @@ func _ready() -> void:
 	btn_siguiente.pressed.connect(_on_btn_siguiente)
 
 	_ocultar_todos_botones()
+	_actualizar_titulo_encuentro()
 	_mostrar_comodines()
-
-	# Ocultar popup
 	comodin_popup.modulate.a = 0.0
 
-	# Iniciar juego
+	_log("[color=cyan]Encuentro " + str(GameData.encuentro_actual) + " de " + str(GameData.TOTAL_ENCUENTROS) + "[/color]")
+	if GameData.con_flor:
+		_log("[color=yellow]Modo: Con Flor[/color]")
+	_log("A " + str(GameData.puntos_objetivo) + " puntos")
+
 	gm.comodines_jugador = comodines_mgr.comodines_jugador
 	gm.comodines_ia = comodines_mgr.comodines_ia
 	gm.iniciar_juego()
 
+func _actualizar_titulo_encuentro() -> void:
+	lbl_encuentro.text = "ENCUENTRO " + str(GameData.encuentro_actual) + "/" + str(GameData.TOTAL_ENCUENTROS)
+
 # ============================================================
-# COMODINES VISUALES
+# COMODINES
 # ============================================================
 
 func _mostrar_comodines() -> void:
@@ -101,95 +125,63 @@ func _mostrar_comodines() -> void:
 		var cv: ComodinVisual = ComodinVisual.crear(tipo, info)
 		comodines_container.add_child(cv)
 		_comodin_visuals[info.get("nombre", "")] = cv
-
-		# Animacion de entrada escalonada
 		cv.modulate.a = 0.0
 		cv.scale = Vector2(0.5, 0.5)
 		cv.pivot_offset = cv.custom_minimum_size / 2.0
-		var tween: Tween = create_tween()
-		tween.set_parallel(true)
-		tween.tween_property(cv, "modulate:a", 1.0, 0.4).set_delay(i * 0.15)
-		tween.tween_property(cv, "scale", Vector2.ONE, 0.4).set_delay(i * 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
+		var tw: Tween = create_tween()
+		tw.set_parallel(true)
+		tw.tween_property(cv, "modulate:a", 1.0, 0.4).set_delay(i * 0.15)
+		tw.tween_property(cv, "scale", Vector2.ONE, 0.4).set_delay(i * 0.15).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _on_comodin_activado(nombre: String, descripcion: String) -> void:
 	_log("[color=magenta]* " + nombre + ": " + descripcion + "[/color]")
-
-	# Activar glow en la tarjeta visual correspondiente
-	var nombre_limpio: String = nombre.replace(" (IA)", "")
-	if _comodin_visuals.has(nombre_limpio):
-		var cv: ComodinVisual = _comodin_visuals[nombre_limpio]
-		cv.activar_efecto()
-
-	# Mostrar popup animado
+	var nl: String = nombre.replace(" (IA)", "")
+	if _comodin_visuals.has(nl):
+		_comodin_visuals[nl].activar_efecto()
 	_mostrar_popup_comodin(nombre, descripcion)
-
 
 func _mostrar_popup_comodin(nombre: String, desc: String) -> void:
 	comodin_popup.text = nombre + " - " + desc
-
-	# Color segun si es del jugador o IA
-	var es_ia: bool = "(IA)" in nombre
-	if es_ia:
-		comodin_popup.add_theme_color_override("font_color", Color(1, 0.4, 0.4))
-	else:
-		comodin_popup.add_theme_color_override("font_color", Color(1, 0.9, 0.3))
-
-	# Animacion: aparece desde abajo, sube, y desaparece
-	var tween: Tween = create_tween()
+	comodin_popup.add_theme_color_override("font_color", Color(1, 0.4, 0.4) if "(IA)" in nombre else Color(1, 0.9, 0.3))
+	var tw: Tween = create_tween()
 	comodin_popup.modulate.a = 0.0
 	comodin_popup.position.y = 300.0
-	tween.set_parallel(true)
-	tween.tween_property(comodin_popup, "modulate:a", 1.0, 0.25)
-	tween.tween_property(comodin_popup, "position:y", 270.0, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.chain()
-	tween.tween_interval(1.2)
-	tween.chain()
-	tween.set_parallel(true)
-	tween.tween_property(comodin_popup, "modulate:a", 0.0, 0.5)
-	tween.tween_property(comodin_popup, "position:y", 250.0, 0.5)
-
+	tw.set_parallel(true)
+	tw.tween_property(comodin_popup, "modulate:a", 1.0, 0.25)
+	tw.tween_property(comodin_popup, "position:y", 270.0, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_interval(1.2)
+	tw.chain().set_parallel(true)
+	tw.tween_property(comodin_popup, "modulate:a", 0.0, 0.5)
+	tw.tween_property(comodin_popup, "position:y", 250.0, 0.5)
 
 # ============================================================
-# MOSTRAR CARTAS CON ANIMACION
+# CARTAS
 # ============================================================
 
 func _on_cartas_repartidas(cartas_j: Array, cant_ia: int) -> void:
 	_limpiar_contenedor(contenedor_cartas_jugador)
 	_limpiar_contenedor(contenedor_cartas_ia)
-
-	# Cartas del jugador - animacion de reparto escalonada
 	for i in range(cartas_j.size()):
 		var cv: CartaVisual = CartaVisual.crear_carta_jugador(cartas_j[i], i)
 		cv.carta_clickeada.connect(_on_carta_clickeada)
 		contenedor_cartas_jugador.add_child(cv)
-		_animar_entrada_carta(cv, i, true)
-
-	# Cartas de IA (ocultas) - animacion escalonada
+		_animar_entrada_carta(cv, i)
 	for i in range(cant_ia):
-		var oculta: CartaVisual = CartaVisual.crear_carta_oculta()
-		contenedor_cartas_ia.add_child(oculta)
-		_animar_entrada_carta(oculta, i, false)
-
-	# Limpiar mesa
+		var oc: CartaVisual = CartaVisual.crear_carta_oculta()
+		contenedor_cartas_ia.add_child(oc)
+		_animar_entrada_carta(oc, i)
 	_limpiar_mesa()
 	lbl_resultado.text = ""
 	lbl_mano_score.text = "Manos: Vos 0 - IA 0"
 
-
-func _animar_entrada_carta(carta: CartaVisual, indice: int, es_jugador: bool) -> void:
+func _animar_entrada_carta(carta: CartaVisual, indice: int) -> void:
 	carta.modulate.a = 0.0
 	carta.scale = Vector2(0.3, 0.3)
 	carta.pivot_offset = carta.custom_minimum_size / 2.0
-
-	var delay: float = indice * 0.12
-	var tween: Tween = create_tween()
-	tween.set_parallel(true)
-	# Fade in
-	tween.tween_property(carta, "modulate:a", 1.0, 0.3).set_delay(delay)
-	# Scale up con bounce
-	tween.tween_property(carta, "scale", Vector2.ONE, 0.35).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
+	var tw: Tween = create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(carta, "modulate:a", 1.0, 0.3).set_delay(indice * 0.12)
+	tw.tween_property(carta, "scale", Vector2.ONE, 0.35).set_delay(indice * 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _limpiar_mesa() -> void:
 	for i in range(3):
@@ -198,46 +190,31 @@ func _limpiar_mesa() -> void:
 		_contenedores_mano[i].add_child(CartaVisual.crear_slot_vacio())
 		_resultados_mano[i].text = ""
 
-
 func _on_carta_clickeada(indice: int) -> void:
-	# Mostrar carta del jugador en la mesa antes de enviarla al GM
 	var mano_idx: int = gm.mano_actual
 	if mano_idx < 3 and indice < gm.cartas_jugador.size():
-		var carta: Carta = gm.cartas_jugador[indice]
-		_colocar_carta_mesa(mano_idx, carta, true)
-
+		_colocar_carta_mesa(mano_idx, gm.cartas_jugador[indice], true)
 	gm.jugador_jugar_carta(indice)
 	_actualizar_cartas_jugador()
-
 
 func _colocar_carta_mesa(mano_idx: int, carta: Carta, es_jugador: bool) -> void:
 	if mano_idx >= 3:
 		return
 	var cont: HBoxContainer = _contenedores_mano[mano_idx]
-	# Slot 0 = jugador, Slot 1 = IA
-	var slot_idx: int = 0 if es_jugador else 1
-	if slot_idx < cont.get_child_count():
-		var viejo: Node = cont.get_child(slot_idx)
-		viejo.queue_free()
+	var slot: int = 0 if es_jugador else 1
+	if slot < cont.get_child_count():
+		cont.get_child(slot).queue_free()
 		await get_tree().process_frame
-	var carta_visual: CartaVisual = CartaVisual.crear_carta_mesa(carta, es_jugador)
-	cont.add_child(carta_visual)
-	cont.move_child(carta_visual, slot_idx)
-
-	# Animacion de carta llegando a la mesa
-	_animar_carta_mesa(carta_visual)
-
-
-func _animar_carta_mesa(carta: CartaVisual) -> void:
-	carta.modulate.a = 0.0
-	carta.scale = Vector2(1.3, 1.3)
-	carta.pivot_offset = carta.custom_minimum_size / 2.0
-
-	var tween: Tween = create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(carta, "modulate:a", 1.0, 0.2)
-	tween.tween_property(carta, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
+	var cv: CartaVisual = CartaVisual.crear_carta_mesa(carta, es_jugador)
+	cont.add_child(cv)
+	cont.move_child(cv, slot)
+	cv.modulate.a = 0.0
+	cv.scale = Vector2(1.3, 1.3)
+	cv.pivot_offset = cv.custom_minimum_size / 2.0
+	var tw: Tween = create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(cv, "modulate:a", 1.0, 0.2)
+	tw.tween_property(cv, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _actualizar_cartas_jugador() -> void:
 	_limpiar_contenedor(contenedor_cartas_jugador)
@@ -246,56 +223,37 @@ func _actualizar_cartas_jugador() -> void:
 		cv.carta_clickeada.connect(_on_carta_clickeada)
 		contenedor_cartas_jugador.add_child(cv)
 
-
 func _on_carta_ia_jugada(carta: Carta) -> void:
-	# Colocar carta de IA en la mesa
 	_colocar_carta_mesa(gm.mano_actual, carta, false)
-	# Remover una carta oculta de la IA con animacion
 	if contenedor_cartas_ia.get_child_count() > 0:
-		var oculta: Node = contenedor_cartas_ia.get_child(0)
-		var tween: Tween = create_tween()
-		tween.tween_property(oculta, "modulate:a", 0.0, 0.15)
-		tween.tween_callback(oculta.queue_free)
+		var oc: Node = contenedor_cartas_ia.get_child(0)
+		var tw: Tween = create_tween()
+		tw.tween_property(oc, "modulate:a", 0.0, 0.15)
+		tw.tween_callback(oc.queue_free)
 
 # ============================================================
-# EVENTOS DEL JUEGO
+# EVENTOS
 # ============================================================
 
 func _on_ronda_iniciada() -> void:
 	comodines_mgr.nueva_ronda()
 	_log("[color=cyan]--- Nueva Ronda ---[/color]")
-	var mano_txt: String = "Sos mano" if gm.es_mano_jugador else "IA es mano"
-	_log(mano_txt)
-
-	# Animacion del texto de info
-	lbl_info.text = mano_txt
+	var txt: String = "Sos mano" if gm.es_mano_jugador else "IA es mano"
+	_log(txt)
+	lbl_info.text = txt
 	_animar_label_bounce(lbl_info)
 
-
 func _on_mano_jugada(ganador: String, carta_j: Carta, carta_ia: Carta) -> void:
-	var mano_idx: int = gm.mano_actual - 1
-	if mano_idx < 0:
-		mano_idx = 0
-
-	var txt_ganador: String = "Ganaste" if ganador == "jugador" else "IA gano"
-	lbl_resultado.text = txt_ganador
+	var mi: int = max(gm.mano_actual - 1, 0)
+	var txt: String = "Ganaste" if ganador == "jugador" else "IA gano"
+	lbl_resultado.text = txt
 	lbl_mano_score.text = "Manos: Vos " + str(gm.manos_jugador) + " - IA " + str(gm.manos_ia)
-	_log(carta_j.nombre_legible() + " vs " + carta_ia.nombre_legible() + " -> " + txt_ganador)
-
-	# Animacion del resultado
+	_log(carta_j.nombre_legible() + " vs " + carta_ia.nombre_legible() + " -> " + txt)
 	_animar_label_bounce(lbl_resultado)
-
-	# Mostrar resultado en el slot de la mano con animacion
-	if mano_idx < 3:
-		if ganador == "jugador":
-			_resultados_mano[mano_idx].text = "Ganaste"
-			_resultados_mano[mano_idx].add_theme_color_override("font_color", Color(0.3, 1, 0.4))
-		else:
-			_resultados_mano[mano_idx].text = "IA gano"
-			_resultados_mano[mano_idx].add_theme_color_override("font_color", Color(1, 0.4, 0.4))
-		_animar_label_bounce(_resultados_mano[mano_idx])
-
-	# Comodin: Mano Pesada
+	if mi < 3:
+		_resultados_mano[mi].text = txt
+		_resultados_mano[mi].add_theme_color_override("font_color", Color(0.3, 1, 0.4) if ganador == "jugador" else Color(1, 0.4, 0.4))
+		_animar_label_bounce(_resultados_mano[mi])
 	if gm.mano_actual == 1:
 		var bonus: int = comodines_mgr.aplicar_mano_pesada(ganador == "jugador")
 		if bonus > 0:
@@ -305,16 +263,11 @@ func _on_mano_jugada(ganador: String, carta_j: Carta, carta_ia: Carta) -> void:
 				gm.puntos_ia += bonus
 			gm.emit_signal("puntos_actualizados", gm.puntos_jugador, gm.puntos_ia)
 
-
 func _on_ronda_terminada(ganador: String) -> void:
 	var txt: String = "Ganaste la ronda!" if ganador == "jugador" else "La IA gano la ronda"
 	_log("[color=yellow]" + txt + "[/color]")
 	lbl_resultado.text = txt
-
-	# Animacion de resultado de ronda
 	_animar_resultado_ronda(ganador == "jugador")
-
-	# Comodin: Violento
 	if gm.truco_fue_cantado:
 		var bonus: int = comodines_mgr.aplicar_violento(ganador == "jugador")
 		if bonus > 0:
@@ -323,151 +276,129 @@ func _on_ronda_terminada(ganador: String) -> void:
 			else:
 				gm.puntos_ia += bonus
 			gm.emit_signal("puntos_actualizados", gm.puntos_jugador, gm.puntos_ia)
-
 	_ocultar_todos_botones()
 	btn_siguiente.visible = true
 	_animar_boton_entrada(btn_siguiente)
 
-
 func _on_juego_terminado(ganador: String) -> void:
-	var txt: String = "GANASTE EL JUEGO!" if ganador == "jugador" else "PERDISTE... La IA gano"
-	_log("[color=gold][b]" + txt + "[/b][/color]")
-	lbl_info.text = txt
 	_ocultar_todos_botones()
 
-	# Animacion de fin de juego
+	if ganador == "jugador":
+		if GameData.encuentro_actual < GameData.TOTAL_ENCUENTROS:
+			var txt: String = "GANASTE el encuentro " + str(GameData.encuentro_actual) + "!"
+			_log("[color=gold][b]" + txt + "[/b][/color]")
+			lbl_info.text = txt
+			# Botón para siguiente encuentro
+			btn_siguiente.text = "Siguiente Encuentro"
+			btn_siguiente.visible = true
+			btn_siguiente.pressed.disconnect(_on_btn_siguiente)
+			btn_siguiente.pressed.connect(_on_siguiente_encuentro)
+			_animar_boton_entrada(btn_siguiente)
+		else:
+			_log("[color=gold][b]GANASTE LA PARTIDA COMPLETA![/b][/color]")
+			lbl_info.text = "CAMPEON! Ganaste los 3 encuentros!"
+			btn_siguiente.text = "Volver al Menu"
+			btn_siguiente.visible = true
+			btn_siguiente.pressed.disconnect(_on_btn_siguiente)
+			btn_siguiente.pressed.connect(_on_volver_menu)
+			_animar_boton_entrada(btn_siguiente)
+	else:
+		_log("[color=red][b]PERDISTE el encuentro " + str(GameData.encuentro_actual) + "[/b][/color]")
+		lbl_info.text = "PERDISTE... La IA gano"
+		btn_siguiente.text = "Reintentar Encuentro"
+		btn_siguiente.visible = true
+		btn_siguiente.pressed.disconnect(_on_btn_siguiente)
+		btn_siguiente.pressed.connect(_on_reintentar_encuentro)
+		_animar_boton_entrada(btn_siguiente)
+
 	_animar_fin_juego(ganador == "jugador")
 
+func _on_siguiente_encuentro() -> void:
+	GameData.avanzar_encuentro()
+	get_tree().reload_current_scene()
+
+func _on_reintentar_encuentro() -> void:
+	get_tree().reload_current_scene()
+
+func _on_volver_menu() -> void:
+	get_tree().change_scene_to_file("res://scenes/menu.tscn")
 
 func _on_puntos_actualizados(pts_j: int, pts_ia: int) -> void:
 	lbl_pts_jugador.text = "Vos: " + str(pts_j)
 	lbl_pts_ia.text = "IA: " + str(pts_ia)
-	# Animacion de puntos
 	_animar_label_punch(lbl_pts_jugador)
 	_animar_label_punch(lbl_pts_ia)
 
-
 func _on_esperando_accion(acciones: Array) -> void:
 	_ocultar_todos_botones()
+	var visibles: Array[Button] = []
 
-	# Mostrar botones con animacion escalonada
-	var botones_visibles: Array[Button] = []
+	# Flor
+	if "flor" in acciones:
+		btn_flor.visible = true
+		visibles.append(btn_flor)
+	if "contra_flor" in acciones:
+		btn_contra_flor.visible = true
+		visibles.append(btn_contra_flor)
+	if "quiero_flor" in acciones:
+		btn_quiero.visible = true
+		visibles.append(btn_quiero)
+	if "no_quiero_flor" in acciones:
+		btn_no_quiero.visible = true
+		visibles.append(btn_no_quiero)
 
 	if "envido" in acciones:
 		btn_envido.visible = true
-		botones_visibles.append(btn_envido)
+		visibles.append(btn_envido)
 	if "real_envido" in acciones:
 		btn_real_envido.visible = true
-		botones_visibles.append(btn_real_envido)
+		visibles.append(btn_real_envido)
 	if "truco" in acciones:
 		btn_truco.visible = true
-		botones_visibles.append(btn_truco)
+		visibles.append(btn_truco)
 	if "retruco" in acciones:
 		btn_retruco.visible = true
-		botones_visibles.append(btn_retruco)
+		visibles.append(btn_retruco)
 	if "vale4" in acciones:
 		btn_vale4.visible = true
-		botones_visibles.append(btn_vale4)
+		visibles.append(btn_vale4)
 	if "quiero_truco" in acciones or "quiero_envido" in acciones:
-		btn_quiero.visible = true
-		botones_visibles.append(btn_quiero)
+		if not btn_quiero.visible:
+			btn_quiero.visible = true
+			visibles.append(btn_quiero)
 	if "no_quiero_truco" in acciones or "no_quiero_envido" in acciones:
-		btn_no_quiero.visible = true
-		botones_visibles.append(btn_no_quiero)
+		if not btn_no_quiero.visible:
+			btn_no_quiero.visible = true
+			visibles.append(btn_no_quiero)
 	if "retirarse" in acciones:
 		btn_retirarse.visible = true
-		botones_visibles.append(btn_retirarse)
+		visibles.append(btn_retirarse)
 
-	# Animar entrada de botones
-	for i in range(botones_visibles.size()):
-		_animar_boton_entrada(botones_visibles[i], i * 0.05)
+	for i in range(visibles.size()):
+		_animar_boton_entrada(visibles[i], i * 0.05)
 
-	# Habilitar click en cartas solo si puede jugar
 	var puede_jugar: bool = "jugar_carta" in acciones
 	for child in contenedor_cartas_jugador.get_children():
 		if child is CartaVisual:
 			child.mouse_filter = Control.MOUSE_FILTER_STOP if puede_jugar else Control.MOUSE_FILTER_IGNORE
 			child.modulate.a = 1.0 if puede_jugar else 0.5
 
-
 func _on_mensaje(texto: String) -> void:
 	_log(texto)
 
-
 func _on_truco_cantado(quien: String, nivel: String) -> void:
-	if quien == "ia":
-		lbl_info.text = "IA canto " + nivel + "!"
-	else:
-		lbl_info.text = "Cantaste " + nivel + "!"
+	lbl_info.text = ("IA canto " if quien == "ia" else "Cantaste ") + nivel + "!"
 	_animar_truco_cantado()
-
-
-# ============================================================
-# ANIMACIONES
-# ============================================================
-
-## Bounce: escala sube y baja rapidamente
-func _animar_label_bounce(label: Control) -> void:
-	label.pivot_offset = label.size / 2.0
-	label.scale = Vector2(1.3, 1.3)
-	var tween: Tween = create_tween()
-	tween.tween_property(label, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
-## Punch: sacudon rapido para cambios de puntaje
-func _animar_label_punch(label: Control) -> void:
-	label.pivot_offset = label.size / 2.0
-	var tween: Tween = create_tween()
-	tween.tween_property(label, "scale", Vector2(1.2, 1.2), 0.1)
-	tween.tween_property(label, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
-
-## Boton aparece con slide desde abajo
-func _animar_boton_entrada(boton: Button, delay: float = 0.0) -> void:
-	boton.modulate.a = 0.0
-	boton.pivot_offset = boton.size / 2.0
-	boton.scale = Vector2(0.8, 0.8)
-	var tween: Tween = create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(boton, "modulate:a", 1.0, 0.2).set_delay(delay)
-	tween.tween_property(boton, "scale", Vector2.ONE, 0.25).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
-## Truco cantado: flash en el texto de info
-func _animar_truco_cantado() -> void:
-	lbl_info.pivot_offset = lbl_info.size / 2.0
-	var tween: Tween = create_tween()
-	# Scale up grande
-	tween.tween_property(lbl_info, "scale", Vector2(1.5, 1.5), 0.15)
-	tween.tween_property(lbl_info, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
-
-## Resultado de ronda: flash de color en el fondo
-func _animar_resultado_ronda(gano_jugador: bool) -> void:
-	lbl_resultado.pivot_offset = lbl_resultado.size / 2.0
-	var color: Color = Color(0.3, 1, 0.4) if gano_jugador else Color(1, 0.4, 0.4)
-	lbl_resultado.add_theme_color_override("font_color", color)
-
-	var tween: Tween = create_tween()
-	tween.tween_property(lbl_resultado, "scale", Vector2(1.4, 1.4), 0.2)
-	tween.tween_property(lbl_resultado, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
-
-## Fin de juego: animacion dramatica
-func _animar_fin_juego(gano_jugador: bool) -> void:
-	lbl_info.pivot_offset = lbl_info.size / 2.0
-	var color: Color = Color(1, 0.85, 0.2) if gano_jugador else Color(1, 0.3, 0.3)
-	lbl_info.add_theme_color_override("font_color", color)
-
-	var tween: Tween = create_tween()
-	# Empieza chiquito
-	lbl_info.scale = Vector2(0.3, 0.3)
-	lbl_info.modulate.a = 0.0
-	tween.set_parallel(true)
-	tween.tween_property(lbl_info, "scale", Vector2(1.2, 1.2), 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(lbl_info, "modulate:a", 1.0, 0.3)
-	tween.chain()
-	# Pulso
-	tween.tween_property(lbl_info, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_SINE)
 
 # ============================================================
 # BOTONES
 # ============================================================
+
+func _on_btn_flor() -> void:
+	gm.jugador_cantar_flor()
+
+func _on_btn_contra_flor() -> void:
+	gm.jugador_responder_flor("contra_flor")
 
 func _on_btn_envido() -> void:
 	gm.jugador_cantar_envido("envido")
@@ -491,13 +422,17 @@ func _on_btn_vale4() -> void:
 		gm.jugador_cantar_truco("vale4")
 
 func _on_btn_quiero() -> void:
-	if gm.esperando_respuesta_truco:
+	if gm.esperando_respuesta_flor:
+		gm.jugador_responder_flor("quiero")
+	elif gm.esperando_respuesta_truco:
 		gm.jugador_responder_truco("quiero")
 	elif gm.esperando_respuesta_envido:
 		gm.jugador_responder_envido(true)
 
 func _on_btn_no_quiero() -> void:
-	if gm.esperando_respuesta_truco:
+	if gm.esperando_respuesta_flor:
+		gm.jugador_responder_flor("no_quiero")
+	elif gm.esperando_respuesta_truco:
 		gm.jugador_responder_truco("no_quiero")
 	elif gm.esperando_respuesta_envido:
 		gm.jugador_responder_envido(false)
@@ -507,6 +442,54 @@ func _on_btn_retirarse() -> void:
 
 func _on_btn_siguiente() -> void:
 	gm.siguiente_ronda()
+
+# ============================================================
+# ANIMACIONES
+# ============================================================
+
+func _animar_label_bounce(label: Control) -> void:
+	label.pivot_offset = label.size / 2.0
+	label.scale = Vector2(1.3, 1.3)
+	create_tween().tween_property(label, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _animar_label_punch(label: Control) -> void:
+	label.pivot_offset = label.size / 2.0
+	var tw: Tween = create_tween()
+	tw.tween_property(label, "scale", Vector2(1.2, 1.2), 0.1)
+	tw.tween_property(label, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+
+func _animar_boton_entrada(boton: Button, delay: float = 0.0) -> void:
+	boton.modulate.a = 0.0
+	boton.pivot_offset = boton.size / 2.0
+	boton.scale = Vector2(0.8, 0.8)
+	var tw: Tween = create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(boton, "modulate:a", 1.0, 0.2).set_delay(delay)
+	tw.tween_property(boton, "scale", Vector2.ONE, 0.25).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _animar_truco_cantado() -> void:
+	lbl_info.pivot_offset = lbl_info.size / 2.0
+	var tw: Tween = create_tween()
+	tw.tween_property(lbl_info, "scale", Vector2(1.5, 1.5), 0.15)
+	tw.tween_property(lbl_info, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+
+func _animar_resultado_ronda(gano: bool) -> void:
+	lbl_resultado.pivot_offset = lbl_resultado.size / 2.0
+	lbl_resultado.add_theme_color_override("font_color", Color(0.3, 1, 0.4) if gano else Color(1, 0.4, 0.4))
+	var tw: Tween = create_tween()
+	tw.tween_property(lbl_resultado, "scale", Vector2(1.4, 1.4), 0.2)
+	tw.tween_property(lbl_resultado, "scale", Vector2.ONE, 0.4).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+
+func _animar_fin_juego(gano: bool) -> void:
+	lbl_info.pivot_offset = lbl_info.size / 2.0
+	lbl_info.add_theme_color_override("font_color", Color(1, 0.85, 0.2) if gano else Color(1, 0.3, 0.3))
+	lbl_info.scale = Vector2(0.3, 0.3)
+	lbl_info.modulate.a = 0.0
+	var tw: Tween = create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(lbl_info, "scale", Vector2(1.2, 1.2), 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(lbl_info, "modulate:a", 1.0, 0.3)
+	tw.chain().tween_property(lbl_info, "scale", Vector2.ONE, 0.3)
 
 # ============================================================
 # UTILIDADES
@@ -522,6 +505,8 @@ func _ocultar_todos_botones() -> void:
 	btn_no_quiero.visible = false
 	btn_retirarse.visible = false
 	btn_siguiente.visible = false
+	btn_flor.visible = false
+	btn_contra_flor.visible = false
 
 func _limpiar_contenedor(cont: Container) -> void:
 	for child in cont.get_children():

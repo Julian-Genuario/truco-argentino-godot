@@ -1,9 +1,10 @@
 extends Node
 
 ## Maquina de estados del juego de Truco Argentino.
-## Arreglados bugs de estado, turno post-envido, y clicks ignorados.
+## Soporta flor (3 del mismo palo), encuentros progresivos.
 
 signal ronda_iniciada
+signal flor_cantada(quien: String)
 signal mano_jugada(ganador: String, carta_j: Carta, carta_ia: Carta)
 signal ronda_terminada(ganador: String)
 signal juego_terminado(ganador: String)
@@ -69,6 +70,13 @@ var truco_pendiente: bool = false
 var truco_pendiente_nivel: String = ""
 var truco_pendiente_quien: String = ""
 
+# Flor
+var flor_resuelta: bool = false
+var flor_jugador_cantada: bool = false
+var flor_ia_cantada: bool = false
+var esperando_respuesta_flor: bool = false
+var quien_canto_flor: String = ""
+
 # Comodines
 var comodines_jugador: Array = []
 var comodines_ia: Array = []
@@ -112,6 +120,11 @@ func iniciar_ronda() -> void:
 	truco_pendiente = false
 	truco_pendiente_nivel = ""
 	truco_pendiente_quien = ""
+	flor_resuelta = false
+	flor_jugador_cantada = false
+	flor_ia_cantada = false
+	esperando_respuesta_flor = false
+	quien_canto_flor = ""
 	carta_jugada_jugador = null
 	carta_jugada_ia = null
 	_historial_jugador.clear()
@@ -159,22 +172,39 @@ func _pedir_respuesta_jugador() -> void:
 func _obtener_acciones_jugador() -> Array:
 	var acciones: Array = []
 
-	var hay_respuesta_pendiente: bool = esperando_respuesta_truco or esperando_respuesta_envido
+	var hay_respuesta: bool = esperando_respuesta_truco or esperando_respuesta_envido or esperando_respuesta_flor
 
 	# Puede jugar carta si no hay respuesta pendiente
-	if not hay_respuesta_pendiente:
+	if not hay_respuesta:
 		acciones.append("jugar_carta")
 
-	# Envido: primera mano, no resuelto, no cantado, jugador no tiró carta aún
-	var puede_envido: bool = (mano_actual == 0 and not envido_resuelto
-		and not envido_cantado and carta_jugada_jugador == null)
+	# Primera mano, no tiró carta
+	var primera_mano_libre: bool = (mano_actual == 0 and carta_jugada_jugador == null)
+
+	# Flor: si con_flor activo, primera mano, tiene flor, no cantó todavía
+	if GameData.con_flor and primera_mano_libre and not flor_resuelta and not flor_jugador_cantada:
+		if GameData.tiene_flor(cartas_jugador + _historial_jugador):
+			if not esperando_respuesta_flor:
+				acciones.append("flor")
+
+	# Respuesta a flor de la IA
+	if esperando_respuesta_flor and quien_canto_flor == "ia":
+		acciones.append("quiero_flor")
+		acciones.append("no_quiero_flor")
+		# Contra flor
+		if GameData.tiene_flor(cartas_jugador + _historial_jugador):
+			acciones.append("contra_flor")
+
+	# Envido: primera mano, no resuelto, no cantado, sin flor cantada
+	var puede_envido: bool = (primera_mano_libre and not envido_resuelto
+		and not envido_cantado and not flor_jugador_cantada and not flor_ia_cantada)
 
 	if puede_envido and not esperando_respuesta_envido:
 		acciones.append("envido")
 		acciones.append("real_envido")
 
 	# Truco
-	if not hay_respuesta_pendiente:
+	if not hay_respuesta:
 		if nivel_truco == "nada" and quien_canto_truco != "jugador":
 			acciones.append("truco")
 		elif nivel_truco == "truco" and quien_canto_truco != "jugador":
@@ -190,7 +220,6 @@ func _obtener_acciones_jugador() -> Array:
 			acciones.append("retruco")
 		elif nivel_truco == "retruco":
 			acciones.append("vale4")
-		# Puede responder con envido (prioridad)
 		if puede_envido:
 			acciones.append("envido")
 			acciones.append("real_envido")
@@ -201,7 +230,7 @@ func _obtener_acciones_jugador() -> Array:
 		acciones.append("no_quiero_envido")
 
 	# Retirarse
-	if not hay_respuesta_pendiente:
+	if not hay_respuesta:
 		acciones.append("retirarse")
 
 	return acciones
@@ -287,6 +316,95 @@ func jugador_responder_envido(acepta: bool) -> void:
 	if not esperando_respuesta_envido:
 		return
 	_procesar_respuesta_envido("jugador", acepta)
+
+# ============================================================
+# FLOR
+# ============================================================
+
+func jugador_cantar_flor() -> void:
+	if not GameData.con_flor or mano_actual != 0 or flor_resuelta or flor_jugador_cantada:
+		return
+	if not GameData.tiene_flor(cartas_jugador + _historial_jugador):
+		return
+
+	flor_jugador_cantada = true
+	quien_canto_flor = "jugador"
+	emit_signal("flor_cantada", "jugador")
+	emit_signal("mensaje", "Cantaste FLOR!")
+
+	# Flor mata envido
+	envido_resuelto = true
+	envido_cantado = true
+
+	# IA tiene flor?
+	if GameData.tiene_flor(cartas_ia + _historial_ia):
+		flor_ia_cantada = true
+		emit_signal("mensaje", "La IA tambien tiene FLOR! Se comparan.")
+		_resolver_flor()
+	else:
+		# IA no tiene flor, jugador gana 3 puntos
+		puntos_jugador += 3
+		emit_signal("mensaje", "La IA no tiene flor. Ganas 3 puntos!")
+		emit_signal("puntos_actualizados", puntos_jugador, puntos_ia)
+		flor_resuelta = true
+		if not _verificar_fin_juego():
+			_siguiente_turno()
+
+func jugador_responder_flor(respuesta: String) -> void:
+	if not esperando_respuesta_flor:
+		return
+	esperando_respuesta_flor = false
+
+	if respuesta == "no_quiero":
+		puntos_ia += 3
+		emit_signal("mensaje", "No quisiste la flor. La IA gana 3 puntos.")
+		emit_signal("puntos_actualizados", puntos_jugador, puntos_ia)
+		flor_resuelta = true
+		envido_resuelto = true
+		if not _verificar_fin_juego():
+			_siguiente_turno()
+	elif respuesta == "contra_flor":
+		# Jugador tiene flor, se comparan con puntos dobles (6)
+		flor_jugador_cantada = true
+		emit_signal("mensaje", "Contra flor!")
+		_resolver_flor_con_puntos(6)
+	else:  # quiero
+		flor_jugador_cantada = true
+		_resolver_flor()
+
+func _resolver_flor() -> void:
+	_resolver_flor_con_puntos(3)
+
+func _resolver_flor_con_puntos(pts: int) -> void:
+	flor_resuelta = true
+	envido_resuelto = true
+
+	var flor_j: int = GameData.calcular_flor(cartas_jugador + _historial_jugador)
+	var flor_ia: int = GameData.calcular_flor(cartas_ia + _historial_ia)
+
+	emit_signal("mensaje", "Flor: Vos " + str(flor_j) + " - IA " + str(flor_ia))
+
+	var ganador: String
+	if flor_j > flor_ia:
+		puntos_jugador += pts
+		ganador = "jugador"
+	elif flor_ia > flor_j:
+		puntos_ia += pts
+		ganador = "ia"
+	else:
+		# Empate: gana mano
+		if es_mano_jugador:
+			puntos_jugador += pts
+			ganador = "jugador"
+		else:
+			puntos_ia += pts
+			ganador = "ia"
+
+	emit_signal("mensaje", ("Ganas " if ganador == "jugador" else "La IA gana ") + str(pts) + " puntos por flor!")
+	emit_signal("puntos_actualizados", puntos_jugador, puntos_ia)
+
+	if not _verificar_fin_juego():
+		_siguiente_turno()
 
 func jugador_retirarse() -> void:
 	var pts: int = GameData.PUNTOS_TRUCO.get(nivel_truco, 1)
@@ -427,6 +545,31 @@ func _turno_ia() -> void:
 	if estado != Estado.TURNO_IA:
 		return
 
+	# Cantar flor?
+	if GameData.con_flor and mano_actual == 0 and not flor_resuelta and not flor_ia_cantada and carta_jugada_ia == null:
+		if GameData.tiene_flor(cartas_ia + _historial_ia):
+			flor_ia_cantada = true
+			quien_canto_flor = "ia"
+			envido_resuelto = true
+			envido_cantado = true
+			emit_signal("flor_cantada", "ia")
+			emit_signal("mensaje", "La IA canta FLOR!")
+			# Jugador tiene flor?
+			if GameData.tiene_flor(cartas_jugador + _historial_jugador):
+				esperando_respuesta_flor = true
+				turno_jugador = true
+				_pedir_respuesta_jugador()
+				return
+			else:
+				# Jugador no tiene flor, IA gana 3 puntos
+				puntos_ia += 3
+				emit_signal("mensaje", "No tenes flor. La IA gana 3 puntos.")
+				emit_signal("puntos_actualizados", puntos_jugador, puntos_ia)
+				flor_resuelta = true
+				if _verificar_fin_juego():
+					return
+				# IA sigue su turno normal (jugar carta)
+
 	# Cantar envido?
 	if mano_actual == 0 and not envido_resuelto and not envido_cantado and carta_jugada_ia == null:
 		var decision_envido: String = ia_brain.decidir_cantar_envido(cartas_ia, puntos_ia, puntos_jugador)
@@ -543,11 +686,11 @@ func _fin_ronda(ganador: String) -> void:
 	_verificar_fin_juego()
 
 func _verificar_fin_juego() -> bool:
-	if puntos_jugador >= GameData.PUNTOS_OBJETIVO:
+	if puntos_jugador >= GameData.puntos_objetivo:
 		estado = Estado.FIN_JUEGO
 		emit_signal("juego_terminado", "jugador")
 		return true
-	elif puntos_ia >= GameData.PUNTOS_OBJETIVO:
+	elif puntos_ia >= GameData.puntos_objetivo:
 		estado = Estado.FIN_JUEGO
 		emit_signal("juego_terminado", "ia")
 		return true
